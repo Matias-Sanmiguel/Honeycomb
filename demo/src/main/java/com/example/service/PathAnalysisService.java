@@ -93,46 +93,64 @@ public class PathAnalysisService {
         Integer pathLength = (Integer) pathData.getOrDefault("pathLength", 0);
         List<Map<String, Object>> nodes = (List<Map<String, Object>>) pathData.get("nodes");
         List<Map<String, Object>> relationships = (List<Map<String, Object>>) pathData.get("relationships");
-        
+
         List<PathResult.PathNode> pathNodes = new ArrayList<>();
-        
+
         // Procesar nodos y construir el path
         if (nodes != null) {
             for (int i = 0; i < nodes.size(); i++) {
-                Map<String, Object> node = nodes.get(i);
-                String address = (String) node.get("address");
-                
-                // Determinar el tipo de nodo
-                List<String> labels = (List<String>) node.get("labels");
+                Map<String, Object> nodeData = nodes.get(i);
+                List<String> labels = (List<String>) nodeData.get("labels");
                 String nodeType = labels != null && !labels.isEmpty() ? labels.get(0) : "UNKNOWN";
-                
-                // Obtener información de la relación si existe
+
+                String address = null;
+                String txHash = null;
+
+                if ("Wallet".equals(nodeType)) {
+                    address = (String) nodeData.get("address");
+                } else if ("Transaction".equals(nodeType)) {
+                    txHash = (String) nodeData.get("hash");
+                    // For transactions, we might want to associate them with the *next* wallet in the path
+                    // or handle them as distinct steps. Let's find the next wallet.
+                    if (i + 1 < nodes.size()) {
+                        Map<String, Object> nextNodeData = nodes.get(i + 1);
+                        address = (String) nextNodeData.get("address");
+                    }
+                }
+
                 Long amount = 0L;
-                String txHash = "";
-                
                 if (relationships != null && i < relationships.size()) {
                     Map<String, Object> rel = relationships.get(i);
-                    Object valueObj = rel.get("value");
+                    Object valueObj = rel.get("amount"); // Changed from "value" to "amount"
                     if (valueObj != null) {
                         amount = ((Number) valueObj).longValue();
                     }
                 }
-                
-                pathNodes.add(PathResult.PathNode.builder()
+
+                if ("Wallet".equals(nodeType)) {
+                     pathNodes.add(PathResult.PathNode.builder()
                         .address(address)
-                        .transactionHash(txHash)
-                        .amount(amount)
-                        .stepNumber(i + 1)
+                        .transactionHash(null) // Wallet nodes don't have a tx hash
+                        .amount(0L) // Amount is on the relationship
+                        .stepNumber(pathNodes.size() + 1)
                         .nodeType(nodeType)
                         .build());
+                } else if ("Transaction".equals(nodeType)) {
+                    // Let's update the last wallet node with transaction info
+                    if (!pathNodes.isEmpty()) {
+                        PathResult.PathNode lastNode = pathNodes.get(pathNodes.size() - 1);
+                        lastNode.setTransactionHash(txHash);
+                        lastNode.setAmount(amount);
+                    }
+                }
             }
         }
-        
+
         // Calcular el total transferido
         Long totalAmount = 0L;
         if (relationships != null) {
             for (Map<String, Object> rel : relationships) {
-                Object valueObj = rel.get("value");
+                Object valueObj = rel.get("amount"); // Changed from "value" to "amount"
                 if (valueObj != null) {
                     totalAmount += ((Number) valueObj).longValue();
                 }

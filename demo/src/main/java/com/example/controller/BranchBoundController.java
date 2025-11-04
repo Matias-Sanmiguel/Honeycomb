@@ -17,18 +17,21 @@ public class BranchBoundController {
     public Map<String, Object> findOptimalPath(
             @RequestParam String sourceAddress,
             @RequestParam String targetAddress,
-            @RequestParam(defaultValue = "1000.0") double maxCost) {
+            @RequestParam(defaultValue = "5") int maxDepth) {
 
         long startTime = System.currentTimeMillis();
         Map<String, Object> response = new HashMap<>();
 
         try {
+            // TODO: Consider if maxDepth should be translated to a cost or used directly
+            double maxCost = maxDepth * 1000; // Example conversion
+
             var result = branchBoundService.findOptimalPathWithCostLimit(
                 sourceAddress, targetAddress, maxCost);
 
             response.put("sourceAddress", sourceAddress);
             response.put("targetAddress", targetAddress);
-            response.put("maxCost", maxCost);
+            response.put("maxDepth", maxDepth);
             response.put("pathFound", result.isPathFound());
             response.put("path", result.getPath());
             response.put("totalCost", result.getTotalCost());

@@ -40,8 +40,8 @@ public interface WalletRepository extends Neo4jRepository<Wallet, String> {
     @Query("MATCH (w1:Wallet {address: $address})-[r:INPUT|OUTPUT]-(t:Transaction)-[r2:INPUT|OUTPUT]-(w2:Wallet) " +
            "WHERE w1.address <> w2.address " +
            "WITH w2, " +
-           "     SUM(CASE WHEN type(r) = 'OUTPUT' THEN r.value ELSE 0 END) as received, " +
-           "     SUM(CASE WHEN type(r) = 'INPUT' THEN r.outputValue ELSE 0 END) as sent, " +
+           "     SUM(CASE WHEN type(r2) = 'OUTPUT' THEN r2.amount ELSE 0 END) as received, " +
+           "     SUM(CASE WHEN type(r) = 'INPUT' THEN r.amount ELSE 0 END) as sent, " +
            "     COUNT(DISTINCT t) as txCount " +
            "RETURN w2.address as address, " +
            "       received, " +
@@ -60,11 +60,11 @@ public interface WalletRepository extends Neo4jRepository<Wallet, String> {
      * Encuentra transacciones grandes (útil para análisis)
      */
     @Query("MATCH (w:Wallet)-[in:INPUT]->(t:Transaction) " +
-           "WHERE in.outputValue > $minAmount " +
+           "WHERE in.amount > $minAmount " +
            "RETURN w.address as wallet, " +
            "       t.hash as transaction, " +
-           "       in.outputValue as amount " +
-           "ORDER BY in.outputValue DESC " +
+           "       in.amount as amount " +
+           "ORDER BY in.amount DESC " +
            "LIMIT $limit")
     List<Map<String, Object>> findLargeTransactions(
             @Param("minAmount") long minAmount,

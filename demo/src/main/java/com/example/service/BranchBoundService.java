@@ -145,62 +145,90 @@ public class BranchBoundService {
         Map<String, List<Edge>> graph = new HashMap<>();
 
         try {
-            // Query para obtener transacciones con fees
-            String cypherQuery = String.format("""
-                MATCH (source:Wallet {address: $source})
-                MATCH (target:Wallet {address: $target})
-                MATCH path = allShortestPaths((source)-[*1..%d]-(target))
-                UNWIND relationships(path) as rel
-                WITH startNode(rel) as from, endNode(rel) as to, rel
-                WHERE from:Wallet AND to:Wallet
-                
-                // Obtener la transacción asociada para calcular fees
-                MATCH (from)-[r]-(t:Transaction)-[]-(to)
-                
-                RETURN DISTINCT
-                    from.address as fromWallet,
-                    to.address as toWallet,
-                    COALESCE(rel.amount, rel.value, rel.outputValue, 0) as amount,
-                    COALESCE(t.fees, rel.amount * 0.001, 10) as cost,
-                    COALESCE(rel.txHash, t.hash, 'unknown') as txHash,
-                    COALESCE(t.confirmed, 0) as timestamp
-                LIMIT 2000
-                """, maxHops);
+            // Query simplificada: obtener todas las conexiones desde la wallet origen
+            String cypherQuery = """
+                MATCH (w1:Wallet)-[:INPUT]->(t:Transaction)-[:OUTPUT]->(w2:Wallet)
+                WHERE w1.address = $source AND w1.address <> w2.address
+                RETURN DISTINCT 
+                    w1.address as fromWallet,
+                    w2.address as toWallet,
+                    t.hash as txHash,
+                    COALESCE(t.fee, 0.0001) as cost
+                LIMIT 1000
+                """;
 
             List<Map<String, Object>> edges = transactionRepository.executeCustomQuery(
                 cypherQuery,
-                Map.of(
-                    "source", sourceWallet,
-                    "target", targetWallet
-                )
+                Map.of("source", sourceWallet)
             );
 
-            // Si no hay caminos directos, intentar exploración más amplia
-            if (edges.isEmpty()) {
-                log.info("No se encontraron caminos directos, expandiendo búsqueda...");
-                edges = buildGraphWithBreadthFirstSearch(sourceWallet, targetWallet, maxHops);
+            log.info("Encontradas {} aristas desde {}", edges.size(), sourceWallet);
+
+            // Obtener también las conexiones desde el destino
+            String targetQuery = """
+                MATCH (w1:Wallet)-[:INPUT]->(t:Transaction)-[:OUTPUT]->(w2:Wallet)
+                WHERE w1.address = $target AND w1.address <> w2.address
+                RETURN DISTINCT 
+                    w1.address as fromWallet,
+                    w2.address as toWallet,
+                    t.hash as txHash,
+                    COALESCE(t.fee, 0.0001) as cost
+                LIMIT 1000
+                """;
+
+            List<Map<String, Object>> targetEdges = transactionRepository.executeCustomQuery(
+                targetQuery,
+                Map.of("target", targetWallet)
+            );
+
+            edges.addAll(targetEdges);
+            log.info("Total de aristas: {}", edges.size());
+
+            // Si aún no tenemos suficientes datos, intentar una búsqueda más amplia
+            if (edges.size() < 5) {
+                String broadQuery = """
+                    MATCH (w1:Wallet)-[:INPUT]->(t:Transaction)-[:OUTPUT]->(w2:Wallet)
+                    WHERE w1.address <> w2.address
+                    RETURN DISTINCT 
+                        w1.address as fromWallet,
+                        w2.address as toWallet,
+                        t.hash as txHash,
+                        COALESCE(t.fee, 0.0001) as cost
+                    LIMIT 500
+                    """;
+
+                List<Map<String, Object>> allEdges = transactionRepository.executeCustomQuery(
+                    broadQuery,
+                    Map.of()
+                );
+
+                edges.addAll(allEdges);
+                log.info("Después de búsqueda amplia: {} aristas", edges.size());
             }
 
             // Construir adjacency list
             for (Map<String, Object> edge : edges) {
                 String from = (String) edge.get("fromWallet");
                 String to = (String) edge.get("toWallet");
-                double amount = ((Number) edge.getOrDefault("amount", 0)).doubleValue();
-                double cost = ((Number) edge.getOrDefault("cost", 10.0)).doubleValue();
+
+                if (from == null || to == null) continue;
+
+                double cost = ((Number) edge.getOrDefault("cost", 0.0001)).doubleValue();
                 String txHash = (String) edge.getOrDefault("txHash", "unknown");
-                long timestamp = ((Number) edge.getOrDefault("timestamp", 0L)).longValue();
 
                 // Agregar arista
                 graph.computeIfAbsent(from, k -> new ArrayList<>())
-                    .add(new Edge(to, amount, cost, txHash, timestamp));
+                    .add(new Edge(to, 1.0, cost, txHash, 0L));
 
-                // Agregar arista bidireccional (grafo no dirigido)
+                // Grafo bidireccional
                 graph.computeIfAbsent(to, k -> new ArrayList<>())
-                    .add(new Edge(from, amount, cost, txHash, timestamp));
+                    .add(new Edge(from, 1.0, cost, txHash, 0L));
             }
 
+            log.info("Grafo construido con {} nodos", graph.size());
+
         } catch (Exception e) {
-            log.error("Error construyendo grafo con costos desde Neo4j", e);
+            log.error("Error construyendo grafo con costos desde Neo4j: {}", e.getMessage(), e);
         }
 
         return graph;
