@@ -121,8 +121,9 @@ public class BranchAndBoundAlgorithm {
 
             // CASO 1: LLEGAMOS AL DESTINO
             if (currentNode.wallet.equals(targetWallet)) {
-                // ¿Es mejor que la mejor solución actual?
-                if (currentNode.costSoFar < bestSolution.getTotalCost()) {
+                // VALIDAR: El camino debe respetar la restricción de costo máximo
+                if (currentNode.costSoFar <= maxCost &&
+                    currentNode.costSoFar < bestSolution.getTotalCost()) {
                     bestSolution = OptimalPathResult.builder()
                         .sourceWallet(sourceWallet)
                         .targetWallet(targetWallet)
@@ -344,4 +345,3 @@ public class BranchAndBoundAlgorithm {
         private int branchesPruned = 0;
     }
 }
-

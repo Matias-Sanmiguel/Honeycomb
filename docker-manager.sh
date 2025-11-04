@@ -15,7 +15,7 @@ info() {
     echo -e "${GREEN}[INFO]${NC} $1"
 }
 
-warn() {
+warn() {false
     echo -e "${YELLOW}[WARN]${NC} $1"
 }
 

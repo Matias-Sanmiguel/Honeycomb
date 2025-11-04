@@ -590,17 +590,17 @@ public class AlgorithmController {
                 "status", "UP",
                 "module", "Algorithms",
                 "version", "1.0",
-                "version", "2.0",
+                "algorithms", List.of(
                         "GREEDY_PEEL_CHAINS",
                         "DYNAMIC_PROGRAMMING_MAX_FLOW",
                         "BETWEENNESS_CENTRALITY",
                         "COMMUNITY_DETECTION",
-                        "PATTERN_MATCHING"
                         "PATTERN_MATCHING",
                         "BACKTRACKING_SUSPICIOUS_CHAINS",
                         "BRANCH_AND_BOUND_OPTIMAL_PATH"
                 ),
-                "totalEndpoints", 9,
+                "totalEndpoints", 7,
                 "documentation", "/api/algorithms/docs"
+        ));
     }
 }

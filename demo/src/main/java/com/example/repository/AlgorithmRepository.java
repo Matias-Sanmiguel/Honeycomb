@@ -1,5 +1,6 @@
 package com.example.repository;
 
+import com.example.model.Wallet;
 import org.springframework.data.neo4j.repository.Neo4jRepository;
 import org.springframework.data.neo4j.repository.query.Query;
 import org.springframework.stereotype.Repository;
@@ -11,7 +12,7 @@ import java.util.Map;
  * Repositorio con queries Cypher avanzadas para algoritmos
  */
 @Repository
-public interface AlgorithmRepository extends Neo4jRepository<Object, String> {
+public interface AlgorithmRepository extends Neo4jRepository<Wallet, String> {
 
     // ============== GREEDY QUERIES ==============
 
