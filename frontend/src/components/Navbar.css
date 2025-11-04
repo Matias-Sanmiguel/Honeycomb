@@ -1,0 +1,192 @@
+.navbar {
+  background-color: var(--surface);
+  padding: 1rem 2rem;
+  border-bottom: 2px solid var(--primary-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.navbar-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 70px;
+}
+
+.navbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  text-decoration: none;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  transition: transform 0.2s ease;
+}
+
+.navbar-brand a {
+  color: var(--primary-color);
+  text-decoration: none;
+  transition: color 0.3s;
+}
+
+.navbar-brand a:hover {
+  color: var(--secondary-color);
+}
+
+.navbar-brand:hover {
+  transform: scale(1.05);
+}
+
+.brand-icon {
+  font-size: 2rem;
+}
+
+.brand-text {
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.navbar-menu {
+  display: flex;
+  list-style: none;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.navbar-menu li a {
+  color: var(--text-secondary);
+  text-decoration: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  transition: all 0.3s;
+  font-weight: 500;
+}
+
+.navbar-menu li a:hover {
+  color: var(--text-primary);
+  background-color: rgba(243, 156, 18, 0.1);
+}
+
+.navbar-menu li a.active {
+  color: var(--primary-color);
+  background-color: rgba(243, 156, 18, 0.2);
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  text-decoration: none;
+  color: var(--text-secondary);
+  border-radius: 0.5rem;
+  transition: all 0.3s ease;
+  font-weight: 500;
+}
+
+.nav-link:hover {
+  background: var(--surface-light);
+  color: var(--text-primary);
+  transform: translateY(-2px);
+}
+
+.nav-link.active {
+  background: var(--primary-color);
+  color: white;
+}
+
+.nav-icon {
+  font-size: 1.25rem;
+}
+
+@media (max-width: 1024px) {
+  .navbar {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .navbar-menu {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 768px) {
+  .navbar {
+    padding: 1rem;
+  }
+
+  .navbar-container {
+    padding: 0 1rem;
+  }
+
+  .navbar-menu {
+    gap: 0.5rem;
+    font-size: 0.9rem;
+  }
+
+  .navbar-menu li a {
+    padding: 0.4rem 0.8rem;
+  }
+
+  .nav-label {
+    display: none;
+  }
+
+  .nav-link {
+    padding: 0.75rem;
+  }
+}
+
+import React from 'react'
+import { Link, useLocation } from 'react-router-dom'
+import { FaHome, FaSearch, FaRoute, FaBolt, FaProjectDiagram, FaFingerprint } from 'react-icons/fa'
+import './Navbar.css'
+
+function Navbar() {
+  const location = useLocation()
+
+  const navItems = [
+    { path: '/', label: 'Home', icon: <FaHome /> },
+    { path: '/backtracking', label: 'Backtracking', icon: <FaSearch /> },
+    { path: '/branch-bound', label: 'Branch & Bound', icon: <FaRoute /> },
+    { path: '/greedy', label: 'Greedy', icon: <FaBolt /> },
+    { path: '/graph', label: 'Graph', icon: <FaProjectDiagram /> },
+    { path: '/patterns', label: 'Patterns', icon: <FaFingerprint /> },
+  ]
+
+  return (
+    <nav className="navbar">
+      <div className="navbar-container">
+        <Link to="/" className="navbar-brand">
+          <span className="brand-icon">🐝</span>
+          <span className="brand-text">Honeycomb</span>
+        </Link>
+
+        <ul className="navbar-menu">
+          {navItems.map(item => (
+            <li key={item.path}>
+              <Link
+                to={item.path}
+                className={`nav-link ${location.pathname === item.path ? 'active' : ''}`}
+              >
+                <span className="nav-icon">{item.icon}</span>
+                <span className="nav-label">{item.label}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </nav>
+  )
+}
+
+export default Navbar

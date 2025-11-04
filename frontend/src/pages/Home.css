@@ -1,0 +1,311 @@
+.home {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 0;
+}
+
+/* Hero Section */
+.hero-section {
+  text-align: center;
+  padding: 3rem 2rem;
+  margin-bottom: 3rem;
+  background: linear-gradient(135deg, rgba(243, 156, 18, 0.1), rgba(230, 126, 34, 0.1));
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+}
+
+.hero-title {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.subtitle {
+  font-size: 1.5rem;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.description {
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.hero-stats {
+  display: flex;
+  justify-content: center;
+  gap: 3rem;
+  margin-top: 3rem;
+}
+
+.stat-item {
+  text-align: center;
+}
+
+.stat-icon {
+  font-size: 2rem;
+  color: var(--primary-color);
+  margin-bottom: 0.5rem;
+}
+
+.stat-value {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.stat-label {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+/* Features Section */
+.features {
+  margin-bottom: 4rem;
+}
+
+.section-title {
+  font-size: 2.5rem;
+  text-align: center;
+  margin-bottom: 3rem;
+  font-weight: 700;
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.feature-card {
+  background: var(--surface);
+  padding: 2rem;
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+  text-decoration: none;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.feature-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 24px rgba(243, 156, 18, 0.3);
+  border-color: var(--primary-color);
+}
+
+.feature-card h3 {
+  color: var(--primary-color);
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.feature-card p {
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+/* Quick Start Section */
+.quick-start {
+  background: var(--surface);
+  border-radius: 1rem;
+  padding: 3rem;
+  border: 1px solid var(--border);
+}
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.step {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.step-number {
+  width: 3rem;
+  height: 3rem;
+  background: var(--primary-color);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.step-content h3 {
+  font-size: 1.25rem;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+}
+
+.step-content p {
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+@media (max-width: 768px) {
+  .hero-title {
+    font-size: 2rem;
+  }
+
+  .subtitle {
+    font-size: 1.2rem;
+  }
+
+  .hero-stats {
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  .features-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .steps {
+    grid-template-columns: 1fr;
+  }
+}
+
+import React from 'react'
+import { Link } from 'react-router-dom'
+import { FaSearch, FaRoute, FaBolt, FaProjectDiagram, FaFingerprint, FaDatabase } from 'react-icons/fa'
+import './Home.css'
+
+function Home() {
+  const features = [
+    {
+      title: 'Backtracking',
+      description: 'Detección exhaustiva de cadenas sospechosas y ciclos en transacciones',
+      icon: <FaSearch />,
+      link: '/backtracking',
+      color: '#6366f1'
+    },
+    {
+      title: 'Branch & Bound',
+      description: 'Encuentra rutas óptimas entre wallets con restricciones de costo',
+      icon: <FaRoute />,
+      link: '/branch-bound',
+      color: '#8b5cf6'
+    },
+    {
+      title: 'Greedy Algorithms',
+      description: 'Detección rápida de peel chains y clustering de transacciones',
+      icon: <FaBolt />,
+      link: '/greedy',
+      color: '#10b981'
+    },
+    {
+      title: 'Graph Algorithms',
+      description: 'Análisis de centralidad, comunidades y nodos importantes',
+      icon: <FaProjectDiagram />,
+      link: '/graph',
+      color: '#f59e0b'
+    },
+    {
+      title: 'Pattern Matching',
+      description: 'Detecta patrones de mixing, ciclos y transacciones anómalas',
+      icon: <FaFingerprint />,
+      link: '/patterns',
+      color: '#ef4444'
+    }
+  ]
+
+  const stats = [
+    { label: 'Algoritmos', value: '8+', icon: <FaDatabase /> },
+    { label: 'Análisis en Tiempo Real', value: '< 1s', icon: <FaBolt /> },
+    { label: 'Precisión', value: '99%', icon: <FaFingerprint /> }
+  ]
+
+  return (
+    <div className="home">
+      <header className="hero-section">
+        <div className="hero-content">
+          <h1 className="hero-title">
+            <span className="gradient-text">Honeycomb</span>
+          </h1>
+          <p className="subtitle">
+            Sistema de Análisis Forense de Criptomonedas
+          </p>
+          <p className="description">
+            Detecta patrones sospechosos, analiza redes de transacciones y descubre
+            conexiones ocultas usando algoritmos avanzados de teoría de grafos.
+          </p>
+          <div className="hero-stats">
+            {stats.map((stat, index) => (
+              <div key={index} className="stat-item">
+                <div className="stat-icon">{stat.icon}</div>
+                <div className="stat-value">{stat.value}</div>
+                <div className="stat-label">{stat.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </header>
+
+      <section className="features">
+        <h2 className="section-title">Algoritmos Disponibles</h2>
+        <div className="features-grid">
+          {features.map((feature, index) => (
+            <Link
+              key={index}
+              to={feature.link}
+              className="feature-card"
+              style={{ '--feature-color': feature.color }}
+            >
+              <div className="feature-icon" style={{ color: feature.color }}>
+                {feature.icon}
+              </div>
+              <h3 className="feature-title">{feature.title}</h3>
+              <p className="feature-description">{feature.description}</p>
+              <div className="feature-arrow">→</div>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className="quick-start">
+        <div className="quick-start-content">
+          <h2 className="section-title">Inicio Rápido</h2>
+          <div className="steps">
+            <div className="step">
+              <div className="step-number">1</div>
+              <div className="step-content">
+                <h3>Selecciona un Algoritmo</h3>
+                <p>Elige el tipo de análisis que deseas realizar</p>
+              </div>
+            </div>
+            <div className="step">
+              <div className="step-number">2</div>
+              <div className="step-content">
+                <h3>Ingresa los Parámetros</h3>
+                <p>Proporciona las direcciones de wallet o configuración</p>
+              </div>
+            </div>
+            <div className="step">
+              <div className="step-number">3</div>
+              <div className="step-content">
+                <h3>Analiza los Resultados</h3>
+                <p>Visualiza y explora los patrones detectados</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  )
+}
+
+export default Home

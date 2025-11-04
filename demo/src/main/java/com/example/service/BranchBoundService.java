@@ -21,15 +21,7 @@ import java.util.*;
 public class BranchBoundService {
 
     private final TransactionRepository transactionRepository;
-    private final BranchAndBoundAlgorithm branchBoundAlgorithm;
-
-    /**
-     * Constructor para inyección de dependencias
-     */
-    public BranchBoundService(TransactionRepository transactionRepository) {
-        this.transactionRepository = transactionRepository;
-        this.branchBoundAlgorithm = new BranchAndBoundAlgorithm();
-    }
+    private final BranchAndBoundAlgorithm branchBoundAlgorithm = new BranchAndBoundAlgorithm();
 
     /**
      * Encuentra el camino óptimo entre dos wallets con restricción de costo
@@ -253,4 +245,3 @@ public class BranchBoundService {
         }
     }
 }
-

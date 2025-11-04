@@ -17,20 +17,12 @@ import java.util.stream.Collectors;
  * Detecta patrones complejos de lavado de dinero mediante exploración exhaustiva
  */
 @Service
-@RequiredArgsConstructor
 @Slf4j
+@RequiredArgsConstructor
 public class BacktrackingService {
 
     private final TransactionRepository transactionRepository;
-    private final BacktrackingAlgorithm backtrackingAlgorithm;
-
-    /**
-     * Constructor para inyección de dependencias
-     */
-    public BacktrackingService(TransactionRepository transactionRepository) {
-        this.transactionRepository = transactionRepository;
-        this.backtrackingAlgorithm = new BacktrackingAlgorithm();
-    }
+    private final BacktrackingAlgorithm backtrackingAlgorithm = new BacktrackingAlgorithm();
 
     /**
      * Detecta cadenas sospechosas desde una wallet específica
@@ -163,4 +155,3 @@ public class BacktrackingService {
         return graph;
     }
 }
-

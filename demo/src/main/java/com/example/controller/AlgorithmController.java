@@ -20,6 +20,7 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/algorithms")
 @RequiredArgsConstructor
 @Slf4j
+@CrossOrigin(origins = "*")
 public class AlgorithmController {
 
     private final GreedyAlgorithmService greedyService;
