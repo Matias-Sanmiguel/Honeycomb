@@ -6,6 +6,7 @@ import com.example.algorithm.BranchAndBoundAlgorithm.OptimalPathResult;
 import com.example.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.neo4j.core.Neo4jClient;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -21,6 +22,7 @@ import java.util.*;
 public class BranchBoundService {
 
     private final TransactionRepository transactionRepository;
+    private final Neo4jClient neo4jClient;
     private final BranchAndBoundAlgorithm branchBoundAlgorithm = new BranchAndBoundAlgorithm();
 
     /**
@@ -157,10 +159,10 @@ public class BranchBoundService {
                 LIMIT 1000
                 """;
 
-            List<Map<String, Object>> edges = transactionRepository.executeCustomQuery(
-                cypherQuery,
-                Map.of("source", sourceWallet)
-            );
+            Collection<Map<String, Object>> edges = neo4jClient.query(cypherQuery)
+                .bindAll(Map.of("source", sourceWallet))
+                .fetch()
+                .all();
 
             log.info("Encontradas {} aristas desde {}", edges.size(), sourceWallet);
 
@@ -176,16 +178,18 @@ public class BranchBoundService {
                 LIMIT 1000
                 """;
 
-            List<Map<String, Object>> targetEdges = transactionRepository.executeCustomQuery(
-                targetQuery,
-                Map.of("target", targetWallet)
-            );
+            Collection<Map<String, Object>> targetEdges = neo4jClient.query(targetQuery)
+                .bindAll(Map.of("target", targetWallet))
+                .fetch()
+                .all();
 
-            edges.addAll(targetEdges);
-            log.info("Total de aristas: {}", edges.size());
+            List<Map<String, Object>> allEdges = new ArrayList<>();
+            allEdges.addAll(edges);
+            allEdges.addAll(targetEdges);
+            log.info("Total de aristas: {}", allEdges.size());
 
             // Si aún no tenemos suficientes datos, intentar una búsqueda más amplia
-            if (edges.size() < 5) {
+            if (allEdges.size() < 5) {
                 String broadQuery = """
                     MATCH (w1:Wallet)-[:INPUT]->(t:Transaction)-[:OUTPUT]->(w2:Wallet)
                     WHERE w1.address <> w2.address
@@ -197,17 +201,16 @@ public class BranchBoundService {
                     LIMIT 500
                     """;
 
-                List<Map<String, Object>> allEdges = transactionRepository.executeCustomQuery(
-                    broadQuery,
-                    Map.of()
-                );
+                Collection<Map<String, Object>> broadEdges = neo4jClient.query(broadQuery)
+                    .fetch()
+                    .all();
 
-                edges.addAll(allEdges);
-                log.info("Después de búsqueda amplia: {} aristas", edges.size());
+                allEdges.addAll(broadEdges);
+                log.info("Después de búsqueda amplia: {} aristas", allEdges.size());
             }
 
             // Construir adjacency list
-            for (Map<String, Object> edge : edges) {
+            for (Map<String, Object> edge : allEdges) {
                 String from = (String) edge.get("fromWallet");
                 String to = (String) edge.get("toWallet");
 

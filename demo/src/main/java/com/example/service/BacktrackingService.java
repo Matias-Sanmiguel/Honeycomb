@@ -6,6 +6,7 @@ import com.example.algorithm.BacktrackingAlgorithm.SuspiciousChain;
 import com.example.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.neo4j.core.Neo4jClient;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -22,6 +23,7 @@ import java.util.stream.Collectors;
 public class BacktrackingService {
 
     private final TransactionRepository transactionRepository;
+    private final Neo4jClient neo4jClient;
     private final BacktrackingAlgorithm backtrackingAlgorithm = new BacktrackingAlgorithm();
 
     /**
@@ -113,7 +115,6 @@ public class BacktrackingService {
         Map<String, List<Edge>> graph = new HashMap<>();
 
         try {
-            // Query para obtener transacciones cercanas
             String cypherQuery = String.format("""
                 MATCH (start:Wallet {address: $wallet})
                 MATCH path = (start)-[r:INPUT|OUTPUT*1..%d]-(other:Wallet)
@@ -130,14 +131,12 @@ public class BacktrackingService {
                 LIMIT 1000
                 """, maxHops);
 
-            // Ejecutar query (simplificado - en producción usar el repository)
-            List<Map<String, Object>> edges = transactionRepository.executeCustomQuery(
-                cypherQuery,
-                Map.of("wallet", startWallet)
-            );
+            Collection<Map<String, Object>> rows = neo4jClient.query(cypherQuery)
+                    .bindAll(Map.of("wallet", startWallet))
+                    .fetch()
+                    .all();
 
-            // Construir adjacency list
-            for (Map<String, Object> edge : edges) {
+            for (Map<String, Object> edge : rows) {
                 String from = (String) edge.get("fromWallet");
                 String to = (String) edge.get("toWallet");
                 double amount = ((Number) edge.getOrDefault("amount", 0)).doubleValue();
@@ -145,7 +144,7 @@ public class BacktrackingService {
                 long timestamp = ((Number) edge.getOrDefault("timestamp", 0L)).longValue();
 
                 graph.computeIfAbsent(from, k -> new ArrayList<>())
-                    .add(new Edge(to, amount, txHash, timestamp));
+                        .add(new Edge(to, amount, txHash, timestamp));
             }
 
         } catch (Exception e) {

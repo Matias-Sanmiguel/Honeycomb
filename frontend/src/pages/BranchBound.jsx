@@ -16,7 +16,8 @@ const BranchBound = () => {
 
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:8080/api/branch-bound/optimal-path?sourceAddress=${sourceAddress}&targetAddress=${targetAddress}&maxDepth=${maxDepth}`);
+      const url = `/api/branch-bound/optimal-path?sourceAddress=${encodeURIComponent(sourceAddress)}&targetAddress=${encodeURIComponent(targetAddress)}&maxDepth=${maxDepth}`;
+      const response = await fetch(url);
       const data = await response.json();
       setResults(data);
     } catch (error) {
@@ -97,4 +98,3 @@ const BranchBound = () => {
 };
 
 export default BranchBound;
-

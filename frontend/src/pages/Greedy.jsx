@@ -2,25 +2,22 @@ import React, { useState } from 'react';
 import './Greedy.css';
 
 const Greedy = () => {
-  const [sourceAddress, setSourceAddress] = useState('');
-  const [targetAmount, setTargetAmount] = useState(0);
+  const [threshold, setThreshold] = useState(0.7);
+  const [minChainLength, setMinChainLength] = useState(2);
+  const [limit, setLimit] = useState(10);
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const handleSearch = async () => {
-    if (!sourceAddress) {
-      alert('Por favor, ingresa una dirección de origen');
-      return;
-    }
-
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:8080/api/greedy/max-value-path?sourceAddress=${sourceAddress}&targetAmount=${targetAmount}`);
+      const url = `/api/greedy/peel-chains?threshold=${threshold}&minChainLength=${minChainLength}&limit=${limit}`;
+      const response = await fetch(url);
       const data = await response.json();
       setResults(data);
     } catch (error) {
       console.error('Error:', error);
-      alert('Error al buscar ruta');
+      alert('Error al ejecutar análisis greedy');
     } finally {
       setLoading(false);
     }
@@ -28,55 +25,74 @@ const Greedy = () => {
 
   return (
     <div className="greedy-container">
-      <h1>⚡ Greedy - Ruta de Máximo Valor</h1>
+      <h1>⚡ Greedy - Peel Chains</h1>
       <p className="description">
-        Encuentra rutas de transacciones usando un algoritmo voraz
+        Analiza posibles peel chains usando un enfoque voraz (greedy)
       </p>
 
       <div className="input-section">
-        <div className="form-group">
-          <label htmlFor="sourceAddress">Dirección de Origen:</label>
-          <input
-            id="sourceAddress"
-            type="text"
-            value={sourceAddress}
-            onChange={(e) => setSourceAddress(e.target.value)}
-            placeholder="0x..."
-          />
-        </div>
+        <div className="form-row">
+          <div className="form-group">
+            <label htmlFor="threshold">Umbral (0-1):</label>
+            <input
+              id="threshold"
+              type="number"
+              value={threshold}
+              onChange={(e) => setThreshold(parseFloat(e.target.value))}
+              min="0"
+              max="1"
+              step="0.01"
+            />
+          </div>
 
-        <div className="form-group">
-          <label htmlFor="targetAmount">Monto Objetivo:</label>
-          <input
-            id="targetAmount"
-            type="number"
-            value={targetAmount}
-            onChange={(e) => setTargetAmount(parseFloat(e.target.value))}
-            min="0"
-            step="0.01"
-          />
+          <div className="form-group">
+            <label htmlFor="minChainLength">Longitud mínima:</label>
+            <input
+              id="minChainLength"
+              type="number"
+              value={minChainLength}
+              onChange={(e) => setMinChainLength(parseInt(e.target.value))}
+              min="1"
+              max="10"
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="limit">Límite:</label>
+            <input
+              id="limit"
+              type="number"
+              value={limit}
+              onChange={(e) => setLimit(parseInt(e.target.value))}
+              min="1"
+              max="50"
+            />
+          </div>
         </div>
 
         <button onClick={handleSearch} disabled={loading}>
-          {loading ? 'Buscando...' : 'Buscar Ruta'}
+          {loading ? 'Analizando...' : 'Analizar'}
         </button>
       </div>
 
       {results && (
         <div className="results-section">
           <h2>Resultados</h2>
-          {results.path ? (
-            <div className="path-info">
-              <p><strong>Valor Total:</strong> {results.totalValue}</p>
-              <p><strong>Transacciones:</strong> {results.transactionCount}</p>
-              <div className="path-visualization">
-                {results.path.map((address, idx) => (
-                  <span key={idx} className="address-node">{address}</span>
-                ))}
-              </div>
+          <p>
+            <strong>Chains encontradas:</strong> {results.chainsFound ?? (results.chains ? results.chains.length : 0)}
+          </p>
+          {Array.isArray(results.chains) && results.chains.length > 0 ? (
+            <div className="path-visualization">
+              {results.chains.map((chain, idx) => (
+                <div key={idx} className="address-node" style={{ textAlign: 'left' }}>
+                  <div><strong>Tx:</strong> {chain.transactionHash || '—'}</div>
+                  <div><strong>Longitud:</strong> {chain.chainLength ?? '—'}</div>
+                  <div><strong>Total:</strong> {chain.totalAmount ?? '—'}</div>
+                </div>
+              ))}
             </div>
           ) : (
-            <p>No se encontró una ruta</p>
+            <p>No se encontraron cadenas</p>
           )}
         </div>
       )}
@@ -85,4 +101,3 @@ const Greedy = () => {
 };
 
 export default Greedy;
-

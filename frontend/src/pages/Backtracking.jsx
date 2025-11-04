@@ -16,22 +16,35 @@ const Backtracking = () => {
 
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:8080/api/backtracking/cycles?sourceAddress=${sourceAddress}&maxDepth=${maxDepth}&minAmount=${minAmount}`);
+      const url = `/api/backtracking/suspicious-chains?sourceAddress=${encodeURIComponent(
+        sourceAddress
+      )}&maxDepth=${maxDepth}`;
+      const response = await fetch(url);
       const data = await response.json();
       setResults(data);
     } catch (error) {
       console.error('Error:', error);
-      alert('Error al buscar ciclos');
+      alert('Error al buscar cadenas sospechosas');
     } finally {
       setLoading(false);
     }
   };
 
+  // Helpers para soportar tanto 'chains' como 'cycles' si existieran
+  const getItems = (res) => {
+    if (!res) return [];
+    if (Array.isArray(res.chains)) return res.chains;
+    if (Array.isArray(res.cycles)) return res.cycles;
+    return [];
+  };
+
+  const items = getItems(results);
+
   return (
     <div className="backtracking-container">
-      <h1>🔍 Backtracking - Búsqueda de Ciclos</h1>
+      <h1>🔍 Backtracking - Búsqueda de Cadenas Sospechosas</h1>
       <p className="description">
-        Búsqueda exhaustiva de ciclos sospechosos en transacciones de criptomonedas
+        Exploración en profundidad para detectar cadenas/ciclos sospechosos de transacciones
       </p>
 
       <div className="input-section">
@@ -42,7 +55,7 @@ const Backtracking = () => {
             type="text"
             value={sourceAddress}
             onChange={(e) => setSourceAddress(e.target.value)}
-            placeholder="0x..."
+            placeholder="1A1zP1eP..."
           />
         </div>
 
@@ -60,7 +73,7 @@ const Backtracking = () => {
           </div>
 
           <div className="form-group">
-            <label htmlFor="minAmount">Monto Mínimo:</label>
+            <label htmlFor="minAmount">Monto Mínimo (opcional):</label>
             <input
               id="minAmount"
               type="number"
@@ -73,30 +86,25 @@ const Backtracking = () => {
         </div>
 
         <button onClick={handleSearch} disabled={loading}>
-          {loading ? 'Buscando...' : 'Buscar Ciclos'}
+          {loading ? 'Buscando...' : 'Buscar Cadenas'}
         </button>
       </div>
 
       {results && (
         <div className="results-section">
           <h2>Resultados</h2>
-          {results.cycles && results.cycles.length > 0 ? (
+          {items.length > 0 ? (
             <div className="cycles-list">
-              {results.cycles.map((cycle, index) => (
+              {items.map((item, index) => (
                 <div key={index} className="cycle-card">
-                  <h3>Ciclo {index + 1}</h3>
-                  <p><strong>Longitud:</strong> {cycle.length}</p>
-                  <p><strong>Monto Total:</strong> {cycle.totalAmount}</p>
-                  <div className="cycle-path">
-                    {cycle.path && cycle.path.map((address, idx) => (
-                      <span key={idx} className="address-node">{address}</span>
-                    ))}
-                  </div>
+                  <h3>Cadena {index + 1}</h3>
+                  {/* Render genérico por si el shape varía */}
+                  <pre>{JSON.stringify(item, null, 2)}</pre>
                 </div>
               ))}
             </div>
           ) : (
-            <p>No se encontraron ciclos</p>
+            <p>No se encontraron cadenas</p>
           )}
         </div>
       )}
@@ -105,4 +113,3 @@ const Backtracking = () => {
 };
 
 export default Backtracking;
-

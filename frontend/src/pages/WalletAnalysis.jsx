@@ -14,7 +14,8 @@ const WalletAnalysis = () => {
 
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:8080/api/wallet/analyze?address=${walletAddress}`);
+      const url = `/api/wallet/analyze?address=${encodeURIComponent(walletAddress)}`;
+      const response = await fetch(url);
       const data = await response.json();
       setResults(data);
     } catch (error) {
@@ -40,7 +41,7 @@ const WalletAnalysis = () => {
             type="text"
             value={walletAddress}
             onChange={(e) => setWalletAddress(e.target.value)}
-            placeholder="0x..."
+            placeholder="1A1zP1eP..."
           />
         </div>
 
@@ -73,4 +74,3 @@ const WalletAnalysis = () => {
 };
 
 export default WalletAnalysis;
-

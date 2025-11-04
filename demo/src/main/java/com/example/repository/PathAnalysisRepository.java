@@ -21,7 +21,7 @@ public interface PathAnalysisRepository extends Neo4jRepository<Wallet, String> 
      * Modelo: Wallet -[:INPUT]-> Transaction -[:OUTPUT]-> Wallet
      */
     @Query("MATCH (w1:Wallet {address: $address1}), (w2:Wallet {address: $address2}) " +
-            "MATCH path = shortestPath((w1)-[:INPUT|OUTPUT*..20]->(w2)) " +
+            "MATCH path = shortestPath((w1)-[:INPUT|OUTPUT*..20]-(w2)) " +
             "WITH path, " +
             "     length(path) as pathLength, " +
             "     [n in nodes(path) | n] as pathNodes, " +

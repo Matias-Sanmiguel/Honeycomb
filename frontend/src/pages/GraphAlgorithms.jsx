@@ -16,9 +16,9 @@ const GraphAlgorithms = () => {
 
     setLoading(true);
     try {
-      let url = `http://localhost:8080/api/graph/${algorithm}?sourceAddress=${sourceAddress}`;
+      let url = `/api/graph/${algorithm}?sourceAddress=${encodeURIComponent(sourceAddress)}`;
       if (targetAddress && (algorithm === 'dijkstra' || algorithm === 'bellman-ford')) {
-        url += `&targetAddress=${targetAddress}`;
+        url += `&targetAddress=${encodeURIComponent(targetAddress)}`;
       }
 
       const response = await fetch(url);
@@ -62,7 +62,7 @@ const GraphAlgorithms = () => {
             type="text"
             value={sourceAddress}
             onChange={(e) => setSourceAddress(e.target.value)}
-            placeholder="0x..."
+            placeholder="1A1zP1eP..."
           />
         </div>
 
@@ -74,7 +74,7 @@ const GraphAlgorithms = () => {
               type="text"
               value={targetAddress}
               onChange={(e) => setTargetAddress(e.target.value)}
-              placeholder="0x..."
+              placeholder="1BvBMSE..."
             />
           </div>
         )}
@@ -95,4 +95,3 @@ const GraphAlgorithms = () => {
 };
 
 export default GraphAlgorithms;
-
