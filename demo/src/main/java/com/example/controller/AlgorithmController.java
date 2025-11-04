@@ -1,7 +1,6 @@
 package com.example.controller;
 
 import com.example.algorithm.AlgorithmRequest;
-import com.example.algorithm.AlgorithmResponse;
 import com.example.dto.*;
 import com.example.service.*;
 import lombok.RequiredArgsConstructor;
@@ -16,13 +15,6 @@ import java.util.stream.Collectors;
 
 /**
  * Controlador REST para algoritmos de análisis forense
- *
- * Expone 5 endpoints principales:
- * 1. POST /api/algorithms/greedy/peel-chains
- * 2. POST /api/algorithms/dp/max-flow-path
- * 3. GET /api/algorithms/graph/centrality
- * 4. GET /api/algorithms/graph/communities
- * 5. POST /api/algorithms/pattern/detect-anomalies
  */
 @RestController
 @RequestMapping("/api/algorithms")
@@ -76,7 +68,6 @@ public class AlgorithmController {
             response.put("results", results);
             response.put("resultCount", results.size());
             response.put("threshold", threshold);
-            response.put("executionTimeMs", 0); // Agregado por el servicio
 
             return ResponseEntity.ok(response);
 
@@ -406,4 +397,3 @@ public class AlgorithmController {
         ));
     }
 }
-

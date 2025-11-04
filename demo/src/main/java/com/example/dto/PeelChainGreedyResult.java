@@ -15,6 +15,7 @@ import lombok.NoArgsConstructor;
 public class PeelChainGreedyResult {
     
     private String wallet;
+    private String transactionHash;
     private Double spendingPercentage;
     private Integer rank;
     private Integer chainLength;
@@ -23,5 +24,6 @@ public class PeelChainGreedyResult {
     private Long transactionCount;
     private String mainRecipient;
     private Long changeAmount;
+    private String pattern;
+    private Double confidence;
 }
-

@@ -6,7 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.*;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -244,25 +244,30 @@ public class DynamicProgrammingService {
 
         while (!current.equals(source) && dpResult.parent.containsKey(current)) {
             String previous = dpResult.parent.get(current);
+            final int currentHop = hopNumber; // Variable final para usar en lambda
+            final String currentNode = current; // Variable final para usar en lambda
 
             // Encontrar la arista que conecta previous → current
             List<Edge> edges = graph.getOrDefault(previous, Collections.emptyList());
             Edge selectedEdge = edges.stream()
-                    .filter(e -> e.to.equals(current))
+                    .filter(e -> e.to.equals(currentNode))
                     .findFirst()
                     .orElse(null);
 
             if (selectedEdge != null) {
                 MaxFlowPathResult.PathStep step = MaxFlowPathResult.PathStep.builder()
                         .from(previous)
-                        .to(current)
+                        .to(currentNode)
                         .amount(selectedEdge.amount)
                         .transactionHash(selectedEdge.txHash)
-                        .timestamp(new java.util.Date(selectedEdge.timestamp))
-                        .hopNumber(hopNumber++)
+                        .timestamp(LocalDateTime.ofInstant(
+                                java.time.Instant.ofEpochMilli(selectedEdge.timestamp),
+                                java.time.ZoneId.systemDefault()))
+                        .hopNumber(currentHop)
                         .build();
 
                 path.add(0, step); // Insertar al principio para mantener orden
+                hopNumber++; // Incrementar después de crear el step
             }
 
             current = previous;
@@ -271,4 +276,3 @@ public class DynamicProgrammingService {
         return path;
     }
 }
-

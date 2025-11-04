@@ -61,11 +61,12 @@ public class GraphAlgorithmsService {
                                             ((Number) data.get("bridgeConnections")).intValue() : 0))
                             .build())
                     .sorted(Comparator.comparingDouble(CentralityResult::getBetweennessCentrality).reversed())
-                    .peek((result) -> {
-                        int index = results.indexOf(result);
-                        result.setRank(index + 1);
-                    })
                     .collect(Collectors.toList());
+
+            // Asignar rankings después de crear la lista
+            for (int i = 0; i < results.size(); i++) {
+                results.get(i).setRank(i + 1);
+            }
 
             long executionTime = System.currentTimeMillis() - startTime;
             log.info("Centrality calculation completed in {}ms, found {} central wallets",
@@ -155,8 +156,12 @@ public class GraphAlgorithmsService {
                             .totalTransactionVolume(((Number) data.get("volume")).longValue())
                             .build())
                     .sorted(Comparator.comparingDouble(CentralityResult::getDegreeCentrality).reversed())
-                    .peek(r -> r.setRank(results.indexOf(r) + 1))
                     .collect(Collectors.toList());
+
+            // Asignar rankings después de crear la lista
+            for (int i = 0; i < results.size(); i++) {
+                results.get(i).setRank(i + 1);
+            }
 
             long executionTime = System.currentTimeMillis() - startTime;
             log.info("Node importance analysis completed in {}ms", executionTime);
@@ -189,4 +194,3 @@ public class GraphAlgorithmsService {
         return "LOW";
     }
 }
-

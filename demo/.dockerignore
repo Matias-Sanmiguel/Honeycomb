@@ -1,0 +1,24 @@
+# Ignorar archivos de compilación
+target/
+*.class
+*.jar
+*.war
+
+# Ignorar archivos de IDE
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+
+# Ignorar archivos de sistema
+.DS_Store
+Thumbs.db
+
+# Ignorar archivos de logs
+*.log
+
+# Ignorar archivos de configuración local
+application-local.properties
+application-dev.properties
+

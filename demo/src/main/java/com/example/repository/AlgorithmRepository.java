@@ -218,5 +218,56 @@ public interface AlgorithmRepository extends Neo4jRepository<Object, String> {
         LIMIT 10000
         """)
     List<Map<String, Object>> getTransactionAmounts();
-}
 
+    // ============== BFS/DFS QUERIES ==============
+
+    /**
+     * Obtiene aristas del grafo para BFS/DFS
+     */
+    @Query("""
+        MATCH (w1:Wallet)-[r]->(t:Transaction)-[r2]->(w2:Wallet)
+        WHERE w1.address = $startWallet OR w1.address IN 
+              [(w1)-[*1..$maxDepth]-(connected) | connected.address]
+        RETURN DISTINCT
+            w1.address as from,
+            w2.address as to
+        LIMIT 1000
+        """)
+    List<Map<String, Object>> getGraphEdges(String startWallet, Integer maxDepth);
+
+    // ============== DIJKSTRA/PRIM/KRUSKAL QUERIES ==============
+
+    /**
+     * Obtiene grafo con pesos (cantidad de transacciones) para Dijkstra/Prim/Kruskal
+     */
+    @Query("""
+        MATCH (w1:Wallet)-[r]->(t:Transaction)-[r2]->(w2:Wallet)
+        WHERE w1.address = $startWallet OR w1.address IN 
+              [(w1)-[*1..$maxNodes]-(connected) | connected.address]
+        WITH w1.address as from, w2.address as to, 
+             COALESCE(r.amount, r2.amount, 1) as weight
+        WHERE weight > 0
+        RETURN DISTINCT
+            from,
+            to,
+            toFloat(weight) as weight
+        LIMIT 5000
+        """)
+    List<Map<String, Object>> getWeightedGraphEdges(String startWallet, Integer maxNodes);
+
+    // ============== DIVIDE & CONQUER QUERIES ==============
+
+    /**
+     * Obtiene wallets con balance para ordenamiento (QuickSort/MergeSort)
+     */
+    @Query("""
+        MATCH (w:Wallet)
+        WHERE w.balance IS NOT NULL AND w.balance > 0
+        RETURN 
+            w.address as wallet,
+            w.balance as balance
+        ORDER BY w.balance DESC
+        LIMIT $limit
+        """)
+    List<Map<String, Object>> getWalletsForSorting(Integer limit);
+}
