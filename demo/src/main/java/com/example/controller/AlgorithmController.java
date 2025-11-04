@@ -26,8 +26,10 @@ public class AlgorithmController {
     private final DynamicProgrammingService dpService;
     private final GraphAlgorithmsService graphService;
     private final PatternMatchingService patternService;
+    private final BacktrackingService backtrackingService;
+    private final BranchBoundService branchBoundService;
 
-    // ============== GREEDY ALGORITHMS ==============
+    // GREEDY ALGORITHMS
 
     /**
      * ENDPOINT 1: Análisis Greedy de Peel Chains
@@ -375,8 +377,209 @@ public class AlgorithmController {
                     .body(Map.of("error", e.getMessage()));
         }
     }
-
     // ============== HEALTH CHECK ==============
+    // ============== BACKTRACKING ==============
+
+    /**
+     * ENDPOINT 6: BACKTRACKING - Detección de Cadenas Sospechosas
+     *
+     * GET /api/forensic/backtrack/suspicious-chains/{depth}?wallet=<address>
+     *
+     * Complejidad: O(b^d) donde b=branching factor, d=profundidad
+     * Descripción: Explora TODOS los caminos posibles para detectar:
+     *   - Ciclos (A→B→C→A)
+     *   - Peel chains complejos
+     *   - Patrones de redistribución
+     *
+     * Ejemplos:
+     *   GET /api/forensic/backtrack/suspicious-chains/5?wallet=1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa
+     *   GET /api/forensic/backtrack/suspicious-chains/4
+     */
+    @GetMapping("/forensic/backtrack/suspicious-chains/{depth}")
+    public ResponseEntity<Map<String, Object>> detectSuspiciousChainsBacktracking(
+            @PathVariable Integer depth,
+            @RequestParam(required = false) String wallet) {
+
+        log.info("Received BACKTRACKING request: depth={}, wallet={}", depth, wallet);
+
+        try {
+            // Validaciones
+            if (depth < 1 || depth > 10) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Depth must be between 1 and 10 (recommended: 4-6)"));
+            }
+
+            List<com.example.algorithm.BacktrackingAlgorithm.SuspiciousChain> chains;
+
+            if (wallet != null && !wallet.isBlank()) {
+                // Búsqueda desde wallet específica
+                chains = backtrackingService.detectSuspiciousChains(wallet, depth);
+            } else {
+                // Búsqueda global de ciclos
+                chains = backtrackingService.detectAllCycles(50);
+            }
+
+            // Agrupar por tipo de patrón
+            Map<String, Long> patternBreakdown = chains.stream()
+                    .collect(Collectors.groupingBy(
+                            c -> c.getType().toString(),
+                            Collectors.counting()
+                    ));
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("algorithm", "BACKTRACKING");
+            response.put("complexity", "O(b^d) - Exponencial con poda");
+            response.put("description", "Exploración exhaustiva de caminos sospechosos");
+            response.put("startWallet", wallet != null ? wallet : "GLOBAL_SEARCH");
+            response.put("maxDepth", depth);
+            response.put("suspiciousChains", chains);
+            response.put("totalChainsFound", chains.size());
+            response.put("patternBreakdown", patternBreakdown);
+            response.put("timestamp", System.currentTimeMillis());
+
+            // Estadísticas
+            double avgSuspicionLevel = chains.stream()
+                    .mapToDouble(c -> c.getSuspicionLevel())
+                    .average()
+                    .orElse(0);
+
+            long cyclesDetected = chains.stream()
+                    .filter(c -> c.getType().toString().equals("CYCLE"))
+                    .count();
+
+            response.put("statistics", Map.of(
+                    "averageSuspicionLevel", avgSuspicionLevel,
+                    "cyclesDetected", cyclesDetected,
+                    "criticalChains", chains.stream()
+                            .filter(c -> c.getSuspicionLevel() >= 0.8)
+                            .count()
+            ));
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("Error in BACKTRACKING analysis", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", "Internal server error: " + e.getMessage()));
+        }
+    }
+
+    // ============== BRANCH & BOUND ==============
+
+    /**
+     * ENDPOINT 7: BRANCH & BOUND - Camino Óptimo con Restricción de Costo
+     *
+     * GET /api/path/branch-bound/{addr1}/{addr2}/{maxCost}
+     *
+     * Complejidad: O(b^d) con poda efectiva → O(V log V + E) en práctica
+     * Descripción: Encuentra el camino MÁS CORTO con restricción de costo máximo
+     *   - Optimiza longitud del camino
+     *   - Respeta límite de fees (maxCost)
+     *   - Poda ramas que no pueden mejorar la solución
+     *
+     * Ejemplos:
+     *   GET /api/path/branch-bound/1A1zP1.../1dice8.../100.0
+     */
+    @GetMapping("/path/branch-bound/{addr1}/{addr2}/{maxCost}")
+    public ResponseEntity<Map<String, Object>> findOptimalPathBranchBound(
+            @PathVariable String addr1,
+            @PathVariable String addr2,
+            @PathVariable Double maxCost) {
+
+        log.info("Received BRANCH & BOUND request: {} → {} with maxCost: {}",
+                addr1, addr2, maxCost);
+
+        try {
+            // Validaciones
+            if (addr1 == null || addr1.isBlank()) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Source wallet (addr1) is required"));
+            }
+
+            if (addr2 == null || addr2.isBlank()) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Target wallet (addr2) is required"));
+            }
+
+            if (maxCost <= 0) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "maxCost must be positive"));
+            }
+
+            // Ejecutar Branch & Bound
+            com.example.algorithm.BranchAndBoundAlgorithm.OptimalPathResult result =
+                    branchBoundService.findOptimalPathWithCostLimit(addr1, addr2, maxCost);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("algorithm", "BRANCH_AND_BOUND");
+            response.put("complexity", "O(b^d) with pruning → O(V log V + E)");
+            response.put("description", "Optimal path with cost constraint");
+            response.put("sourceWallet", result.getSourceWallet());
+            response.put("targetWallet", result.getTargetWallet());
+            response.put("maxCostAllowed", maxCost);
+            response.put("pathFound", result.isPathFound());
+
+            if (result.isPathFound()) {
+                response.put("path", result.getPath());
+                response.put("totalCost", result.getTotalCost());
+                response.put("pathLength", result.getPathLength());
+                response.put("nodesExplored", result.getNodesExplored());
+                response.put("branchesPruned", result.getBranchesPruned());
+                response.put("executionTimeMs", result.getExecutionTimeMs());
+                response.put("efficiency", Map.of(
+                        "pruningRatio", result.getBranchesPruned() > 0
+                                ? (double) result.getBranchesPruned() / result.getNodesExplored()
+                                : 0,
+                        "costUtilization", result.getTotalCost() / maxCost
+                ));
+            } else {
+                response.put("message", "No path found within cost limit");
+                response.put("suggestion", "Try increasing maxCost or check if wallets are connected");
+            }
+
+            response.put("timestamp", System.currentTimeMillis());
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("Error in BRANCH & BOUND analysis", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", "Internal server error: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Endpoint auxiliar: Encuentra múltiples caminos con diferentes restricciones
+     *
+     * GET /api/path/branch-bound/analyze/{addr1}/{addr2}
+     */
+    @GetMapping("/path/branch-bound/analyze/{addr1}/{addr2}")
+    public ResponseEntity<Map<String, Object>> analyzePaths(
+            @PathVariable String addr1,
+            @PathVariable String addr2) {
+
+        log.info("Analyzing multiple paths between {} and {}", addr1, addr2);
+
+        try {
+            Map<String, com.example.algorithm.BranchAndBoundAlgorithm.OptimalPathResult> results =
+                    branchBoundService.findMultiplePathsWithDifferentCosts(addr1, addr2);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("algorithm", "BRANCH_AND_BOUND_MULTI");
+            response.put("sourceWallet", addr1);
+            response.put("targetWallet", addr2);
+            response.put("results", results);
+            response.put("totalScenarios", results.size());
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("Error in multi-path analysis", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", e.getMessage()));
+        }
+    }
+
 
     /**
      * Health check del módulo de algoritmos
@@ -387,13 +590,17 @@ public class AlgorithmController {
                 "status", "UP",
                 "module", "Algorithms",
                 "version", "1.0",
-                "algorithms", List.of(
+                "version", "2.0",
                         "GREEDY_PEEL_CHAINS",
                         "DYNAMIC_PROGRAMMING_MAX_FLOW",
                         "BETWEENNESS_CENTRALITY",
                         "COMMUNITY_DETECTION",
                         "PATTERN_MATCHING"
-                )
-        ));
+                        "PATTERN_MATCHING",
+                        "BACKTRACKING_SUSPICIOUS_CHAINS",
+                        "BRANCH_AND_BOUND_OPTIMAL_PATH"
+                ),
+                "totalEndpoints", 9,
+                "documentation", "/api/algorithms/docs"
     }
 }
