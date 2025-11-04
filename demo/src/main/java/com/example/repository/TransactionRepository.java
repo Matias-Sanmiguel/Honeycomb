@@ -84,4 +84,21 @@ public interface TransactionRepository extends Neo4jRepository<Transaction, Stri
      */
     @Query("MATCH (t:Transaction) WHERE t.doubleSpend = true RETURN t ORDER BY t.confirmed DESC LIMIT 50")
     List<Transaction> findDoubleSpendTransactions();
+
+    //Encuentra las wallets más activas (para análisis de ciclos)
+    @Query("MATCH (w:Wallet)-[r]-() " +
+           "WITH w, COUNT(DISTINCT r) as txCount " +
+           "WHERE txCount > 5 " +
+           "RETURN w.address as wallet, txCount " +
+           "ORDER BY txCount DESC " +
+           "LIMIT $limit")
+    List<Map<String, Object>> findMostActiveWallets(@Param("limit") int limit);
+
+     //Ejecuta una query Cypher personalizada
+     //Útil para queries dinámicas de algoritmos
+    @Query("$query")
+    List<Map<String, Object>> executeCustomQuery(
+            @Param("query") String query,
+            @Param("params") Map<String, Object> params
+    );
 }
