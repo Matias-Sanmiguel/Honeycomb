@@ -15,12 +15,16 @@ const WalletAnalysis = () => {
     setLoading(true);
     try {
       const url = `/api/wallet/analyze?address=${encodeURIComponent(walletAddress)}`;
+      console.log('Fetching:', url);
       const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       const data = await response.json();
       setResults(data);
     } catch (error) {
       console.error('Error:', error);
-      alert('Error al analizar billetera');
+      alert('Error al analizar billetera: ' + error.message);
     } finally {
       setLoading(false);
     }

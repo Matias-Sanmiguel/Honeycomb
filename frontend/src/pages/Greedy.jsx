@@ -12,12 +12,16 @@ const Greedy = () => {
     setLoading(true);
     try {
       const url = `/api/greedy/peel-chains?threshold=${threshold}&minChainLength=${minChainLength}&limit=${limit}`;
+      console.log('Fetching:', url);
       const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       const data = await response.json();
       setResults(data);
     } catch (error) {
       console.error('Error:', error);
-      alert('Error al ejecutar análisis greedy');
+      alert('Error al ejecutar análisis greedy: ' + error.message);
     } finally {
       setLoading(false);
     }

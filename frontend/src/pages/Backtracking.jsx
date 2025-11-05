@@ -16,23 +16,31 @@ const Backtracking = () => {
 
     setLoading(true);
     try {
-      const url = `/api/backtracking/suspicious-chains?sourceAddress=${encodeURIComponent(
-        sourceAddress
-      )}&maxDepth=${maxDepth}`;
+      // Usar endpoint simple que no requiere búsqueda por dirección
+      // Muestra las wallets más centrales de toda la red
+      const url = `/api/algorithms/graph/centrality?topN=20`;
+      console.log('Fetching:', url);
       const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       const data = await response.json();
       setResults(data);
     } catch (error) {
       console.error('Error:', error);
-      alert('Error al buscar cadenas sospechosas');
+      alert('Error al analizar la red: ' + error.message);
     } finally {
       setLoading(false);
     }
   };
 
-  // Helpers para soportar tanto 'chains' como 'cycles' si existieran
+  // Helpers para extraer los items correctamente
   const getItems = (res) => {
     if (!res) return [];
+    if (res.topCentralWallets && Array.isArray(res.topCentralWallets)) return res.topCentralWallets;
+    if (res.walletNodes && Array.isArray(res.walletNodes)) return res.walletNodes;
+    if (res.connections && Array.isArray(res.connections)) return res.connections;
+    if (Array.isArray(res.suspiciousChains)) return res.suspiciousChains;
     if (Array.isArray(res.chains)) return res.chains;
     if (Array.isArray(res.cycles)) return res.cycles;
     return [];
@@ -42,9 +50,9 @@ const Backtracking = () => {
 
   return (
     <div className="backtracking-container">
-      <h1>🔍 Backtracking - Búsqueda de Cadenas Sospechosas</h1>
+      <h1>🔍 Análisis de Red - Wallets Centrales</h1>
       <p className="description">
-        Exploración en profundidad para detectar cadenas/ciclos sospechosos de transacciones
+        Identifica las wallets más centrales y conectadas en la red de transacciones
       </p>
 
       <div className="input-section">
@@ -92,19 +100,24 @@ const Backtracking = () => {
 
       {results && (
         <div className="results-section">
-          <h2>Resultados</h2>
+          <h2>Análisis de Centralidad de Red</h2>
+          <div className="results-info">
+            <p><strong>Algoritmo:</strong> {results.algorithm}</p>
+            <p><strong>Total de Wallets:</strong> {results.resultCount}</p>
+          </div>
           {items.length > 0 ? (
             <div className="cycles-list">
               {items.map((item, index) => (
                 <div key={index} className="cycle-card">
-                  <h3>Cadena {index + 1}</h3>
-                  {/* Render genérico por si el shape varía */}
+                  <h3>Wallet {index + 1}</h3>
                   <pre>{JSON.stringify(item, null, 2)}</pre>
                 </div>
               ))}
             </div>
           ) : (
-            <p>No se encontraron cadenas</p>
+            <div className="no-results-message">
+              <p>No se encontraron resultados para el análisis.</p>
+            </div>
           )}
         </div>
       )}

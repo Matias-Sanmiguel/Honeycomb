@@ -408,6 +408,32 @@ pre {
   color: var(--text-secondary);
 }
 
+.no-results-message {
+  background: var(--surface);
+  padding: 2rem;
+  text-align: center;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+
+.results-info {
+  background: var(--background);
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+  margin-bottom: 1.5rem;
+  border-left: 4px solid var(--primary-color);
+}
+
+.results-info p {
+  margin-bottom: 0.75rem;
+  color: var(--text-primary);
+}
+
+.results-info p strong {
+  color: var(--primary-color);
+}
+
 @media (max-width: 768px) {
   .results-header {
     flex-direction: column;

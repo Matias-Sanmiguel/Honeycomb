@@ -21,12 +21,16 @@ const GraphAlgorithms = () => {
         url += `&targetAddress=${encodeURIComponent(targetAddress)}`;
       }
 
+      console.log('Fetching:', url);
       const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       const data = await response.json();
       setResults(data);
     } catch (error) {
       console.error('Error:', error);
-      alert('Error al ejecutar algoritmo');
+      alert('Error al ejecutar algoritmo: ' + error.message);
     } finally {
       setLoading(false);
     }
