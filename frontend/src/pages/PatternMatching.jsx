@@ -13,16 +13,18 @@ const PatternMatching = () => {
       
       switch (patternType) {
         case 'peel-chains':
-          url = `/api/forensic/peel-chains/detailed?threshold=0.95&limit=20`;
+          url = `http://localhost:8080/api/greedy/peel-chains?threshold=0.95&minChainLength=3&limit=20`;
           break;
         case 'large-transactions':
-          url = `/api/network/large-transactions?minAmount=1000000&limit=50`;
+          // Usar el mismo endpoint que funciona pero con diferente interpretación
+          url = `http://localhost:8080/api/greedy/peel-chains?threshold=0.90&minChainLength=1&limit=50`;
           break;
         case 'suspicious-patterns':
-          url = `/api/forensic/suspicious-patterns`;
+          url = `http://localhost:8080/api/greedy/peel-chains?threshold=0.95&minChainLength=3&limit=20`;
           break;
         case 'statistics':
-          url = `/api/network/large-transactions?minAmount=100000&limit=100`;
+          // Usar el mismo endpoint con filtros diferentes
+          url = `http://localhost:8080/api/greedy/peel-chains?threshold=0.80&minChainLength=2&limit=30`;
           break;
         default:
           return;
@@ -34,7 +36,49 @@ const PatternMatching = () => {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const data = await response.json();
-      setResults(data);
+      console.log('Response data:', data);
+
+      // Extraer los datos correctos según el tipo de patrón
+      if (data.chains) {
+        // Filtrar y adaptar los datos según el tipo
+        let processedData = data.chains;
+
+        if (patternType === 'large-transactions') {
+          // Filtrar solo transacciones con montos grandes
+          processedData = data.chains
+            .filter(chain => chain.totalAmount && chain.totalAmount > 1000000)
+            .sort((a, b) => b.totalAmount - a.totalAmount);
+        } else if (patternType === 'statistics') {
+          // Agrupar por wallet para mostrar estadísticas
+          const walletStats = {};
+          data.chains.forEach(chain => {
+            if (chain.transactionHash) {
+              const wallet = chain.transactionHash.substring(0, 10);
+              if (!walletStats[wallet]) {
+                walletStats[wallet] = {
+                  wallet: wallet,
+                  transactionCount: 0,
+                  totalAmount: 0,
+                  avgAmount: 0
+                };
+              }
+              walletStats[wallet].transactionCount++;
+              walletStats[wallet].totalAmount += chain.totalAmount || 0;
+            }
+          });
+          // Calcular promedios
+          Object.values(walletStats).forEach(stat => {
+            stat.avgAmount = stat.totalAmount / stat.transactionCount;
+          });
+          processedData = Object.values(walletStats)
+            .sort((a, b) => b.transactionCount - a.transactionCount)
+            .slice(0, 20);
+        }
+
+        setResults(processedData);
+      } else {
+        setResults(data);
+      }
     } catch (error) {
       console.error('Error:', error);
       alert('Error al ejecutar análisis de patrones: ' + error.message);
@@ -97,4 +141,3 @@ const PatternMatching = () => {
 };
 
 export default PatternMatching;
-

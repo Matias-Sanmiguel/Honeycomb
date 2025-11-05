@@ -17,8 +17,8 @@ public interface TransactionRepository extends Neo4jRepository<Transaction, Stri
      * Encuentra transacciones donde se gasta casi todo el balance (>95%)
      */
     @Query("MATCH (w:Wallet)-[in:INPUT]->(t:Transaction) " +
-           "WITH w, t, in.outputValue as input_amount, " +
-           "     [(t)-[out:OUTPUT]->(receiver:Wallet) | out.value] as output_values " +
+           "WITH w, t, in.amount as input_amount, " +
+           "     [(t)-[out:OUTPUT]->(receiver:Wallet) | out.amount] as output_values " +
            "WITH w, t, input_amount, " +
            "     reduce(total = 0, val in output_values | total + val) as outputs_total " +
            "WHERE outputs_total > input_amount * 0.95 " +
@@ -33,24 +33,23 @@ public interface TransactionRepository extends Neo4jRepository<Transaction, Stri
     /**
      * Variante mejorada con información adicional de peel chain
      */
-    @Query("MATCH (w:Wallet)-[in:INPUT]->(t:Transaction)-[out:OUTPUT]->(receiver:Wallet) " +
-           "WITH w, t, in.outputValue as input_amount, " +
-           "     COLLECT({address: receiver.address, amount: out.value}) as outputs " +
-           "WITH w, t, input_amount, outputs, " +
-           "     reduce(total = 0, output in outputs | total + output.amount) as outputs_total " +
-           "WHERE outputs_total > input_amount * $threshold " +
-           "WITH w, t, input_amount, outputs_total, outputs, " +
-           "     [output in outputs | output.amount] as amounts, " +
-           "     [output in outputs | output.address] as addresses " +
-           "RETURN w.address as wallet, " +
+    @Query("MATCH (w:Wallet)-[in:INPUT]->(t:Transaction) " +
+           "MATCH (t)-[out:OUTPUT]->(receiver:Wallet) " +
+           "WITH t, w.address as wallet_addr, " +
+           "     SUM(in.amount) as total_input, " +
+           "     SUM(out.amount) as total_output, " +
+           "     COLLECT(DISTINCT receiver.address)[0..2] as recipients, " +
+           "     COLLECT(DISTINCT out.amount)[0..2] as amounts " +
+           "WHERE total_output > total_input * $threshold AND total_input > 0 " +
+           "RETURN wallet_addr as wallet, " +
            "       t.hash as transaction, " +
-           "       input_amount as inputAmount, " +
-           "       outputs_total as outputsTotal, " +
-           "       addresses[0] as mainRecipient, " +
+           "       total_input as inputAmount, " +
+           "       total_output as outputsTotal, " +
+           "       recipients[0] as mainRecipient, " +
            "       amounts[0] as mainRecipientAmount, " +
-           "       CASE WHEN size(addresses) > 1 THEN addresses[1] ELSE null END as changeAddress, " +
+           "       CASE WHEN size(recipients) > 1 THEN recipients[1] ELSE null END as changeAddress, " +
            "       CASE WHEN size(amounts) > 1 THEN amounts[1] ELSE null END as changeAmount " +
-           "ORDER BY input_amount DESC " +
+           "ORDER BY total_input DESC " +
            "LIMIT $limit")
     List<Map<String, Object>> detectPeelChainsDetailed(
             @Param("threshold") double threshold,
