@@ -25,16 +25,27 @@ public class PathAnalysisService {
         log.info("Finding path from {} to {}", fromAddress, toAddress);
         
         try {
-            PathQueryResult pathData = pathAnalysisRepository.findShortestPath(fromAddress, toAddress);
+            List<Map<String, Object>> results = pathAnalysisRepository.findShortestPathRaw(fromAddress, toAddress);
 
-            if (pathData == null || pathData.getPathLength() == null) {
+            if (results == null || results.isEmpty()) {
                 return buildNoConnectionResult(fromAddress, toAddress);
             }
             
-            return buildPathResult(fromAddress, toAddress, pathData);
-            
+            // Extraer el objeto "result" del primer elemento
+            Map<String, Object> firstResult = results.get(0);
+            @SuppressWarnings("unchecked")
+            Map<String, Object> pathData = firstResult.containsKey("result")
+                ? (Map<String, Object>) firstResult.get("result")
+                : firstResult;
+
+            if (pathData == null) {
+                return buildNoConnectionResult(fromAddress, toAddress);
+            }
+
+            return buildPathResultFromMap(fromAddress, toAddress, pathData);
+
         } catch (Exception e) {
-            log.error("Error finding path: {}", e.getMessage());
+            log.error("Error finding path: {}", e.getMessage(), e);
             return buildNoConnectionResult(fromAddress, toAddress);
         }
     }

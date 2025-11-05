@@ -24,17 +24,18 @@ public interface PathAnalysisRepository extends Neo4jRepository<Wallet, String> 
     @Query("MATCH (w1:Wallet {address: $address1}), (w2:Wallet {address: $address2}) " +
             "MATCH path = shortestPath((w1)-[:INPUT|OUTPUT*..20]-(w2)) " +
             "WHERE length(path) > 0 AND length(path) % 2 = 0 " +
-            "WITH length(path) as pathLength, " +
-            "     [i in range(0, size(nodes(path))-1) | " +
-            "       CASE WHEN 'Wallet' IN labels(nodes(path)[i]) " +
-            "            THEN {address: nodes(path)[i].address, labels: labels(nodes(path)[i])} " +
-            "            WHEN 'Transaction' IN labels(nodes(path)[i]) " +
-            "            THEN {hash: nodes(path)[i].hash, labels: labels(nodes(path)[i])} " +
-            "       END " +
-            "     ] as nodes, " +
-            "     [r in relationships(path) | {type: type(r), amount: r.amount}] as relationships " +
-            "RETURN pathLength, nodes, relationships")
-    PathQueryResult findShortestPath(
+            "RETURN { " +
+            "  pathLength: length(path), " +
+            "  nodes: [i in range(0, size(nodes(path))-1) | " +
+            "    CASE WHEN 'Wallet' IN labels(nodes(path)[i]) " +
+            "         THEN {address: nodes(path)[i].address, labels: labels(nodes(path)[i])} " +
+            "         WHEN 'Transaction' IN labels(nodes(path)[i]) " +
+            "         THEN {hash: nodes(path)[i].hash, labels: labels(nodes(path)[i])} " +
+            "    END " +
+            "  ], " +
+            "  relationships: [r in relationships(path) | {type: type(r), amount: r.amount}] " +
+            "} as result")
+    List<Map<String, Object>> findShortestPathRaw(
             @Param("address1") String address1,
             @Param("address2") String address2
     );

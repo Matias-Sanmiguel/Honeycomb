@@ -21,9 +21,10 @@ public interface WalletRepository extends Neo4jRepository<Wallet, String> {
      */
     @Query("MATCH (start:Wallet {address: $address}) " +
             "OPTIONAL MATCH (start)-[:INPUT|OUTPUT]-(t:Transaction)-[:INPUT|OUTPUT]-(other:Wallet) " +
-            "RETURN start AS wallet, " +
-            "COLLECT(DISTINCT t) AS transactions, " +
-            "COLLECT(DISTINCT other) AS connectedWallets")
+            "WHERE start.address <> other.address " +
+            "RETURN {address: start.address, balance: start.balance, txCount: start.txCount} AS wallet, " +
+            "       COLLECT(DISTINCT {hash: t.hash, confirmed: t.confirmed, blockHeight: t.blockHeight}) AS transactions, " +
+            "       COLLECT(DISTINCT {address: other.address, balance: other.balance}) AS connectedWallets")
     List<Map<String, Object>> analyzeNetwork(@Param("address") String address);
 
 
