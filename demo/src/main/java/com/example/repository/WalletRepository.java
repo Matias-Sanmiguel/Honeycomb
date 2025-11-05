@@ -22,9 +22,11 @@ public interface WalletRepository extends Neo4jRepository<Wallet, String> {
     @Query("MATCH (start:Wallet {address: $address}) " +
             "OPTIONAL MATCH (start)-[:INPUT|OUTPUT]-(t:Transaction)-[:INPUT|OUTPUT]-(other:Wallet) " +
             "WHERE start.address <> other.address " +
-            "RETURN {address: start.address, balance: start.balance, txCount: start.txCount} AS wallet, " +
-            "       COLLECT(DISTINCT {hash: t.hash, confirmed: t.confirmed, blockHeight: t.blockHeight}) AS transactions, " +
-            "       COLLECT(DISTINCT {address: other.address, balance: other.balance}) AS connectedWallets")
+            "RETURN { " +
+            "  wallet: {address: start.address, balance: start.balance, txCount: start.txCount}, " +
+            "  transactions: COLLECT(DISTINCT {hash: t.hash, confirmed: t.confirmed, blockHeight: t.blockHeight}), " +
+            "  connectedWallets: COLLECT(DISTINCT {address: other.address, balance: other.balance}) " +
+            "} as result")
     List<Map<String, Object>> analyzeNetwork(@Param("address") String address);
 
 
@@ -32,11 +34,13 @@ public interface WalletRepository extends Neo4jRepository<Wallet, String> {
      * Encuentra todas las transacciones recientes de una wallet
      */
     @Query("MATCH (w:Wallet {address: $address})-[r:INPUT|OUTPUT]-(t:Transaction) " +
-            "RETURN t.hash AS hash, " +
-            "       t.confirmed AS timestamp, " +
-            "       t.blockHeight AS blockHeight, " +
-            "       COALESCE(r.amount, 0) AS amount, " +
-            "       type(r) AS type " +
+            "RETURN { " +
+            "  hash: t.hash, " +
+            "  timestamp: t.confirmed, " +
+            "  blockHeight: t.blockHeight, " +
+            "  amount: COALESCE(r.amount, 0), " +
+            "  type: type(r) " +
+            "} as result " +
             "ORDER BY t.confirmed DESC LIMIT $limit")
     List<Map<String, Object>> findRecentTransactions(
             @Param("address") String address,
@@ -53,15 +57,17 @@ public interface WalletRepository extends Neo4jRepository<Wallet, String> {
             "     SUM(CASE WHEN type(r2) = 'OUTPUT' THEN r2.amount ELSE 0 END) AS received, " +
             "     SUM(CASE WHEN type(r) = 'INPUT' THEN r.amount ELSE 0 END) AS sent, " +
             "     COUNT(DISTINCT t) AS txCount " +
-            "RETURN w2.address AS address, " +
-            "       received, " +
-            "       sent, " +
-            "       txCount, " +
-            "       CASE " +
-            "         WHEN received > 0 AND sent > 0 THEN 'BOTH' " +
-            "         WHEN received > 0 THEN 'RECEIVED' " +
-            "         ELSE 'SENT' " +
-            "       END AS direction " +
+            "RETURN { " +
+            "  address: w2.address, " +
+            "  received: received, " +
+            "  sent: sent, " +
+            "  txCount: txCount, " +
+            "  direction: CASE " +
+            "    WHEN received > 0 AND sent > 0 THEN 'BOTH' " +
+            "    WHEN received > 0 THEN 'RECEIVED' " +
+            "    ELSE 'SENT' " +
+            "  END " +
+            "} as result " +
             "ORDER BY (received + sent) DESC " +
             "LIMIT 50")
     List<Map<String, Object>> findConnectedWallets(@Param("address") String address);

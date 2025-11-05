@@ -109,13 +109,13 @@ public interface AlgorithmRepository extends Neo4jRepository<Wallet, String> {
      * Identifica clusters de nodos altamente interconectados
      */
     @Query("""
-        MATCH (w:Wallet)-[r]-(neighbor:Wallet)
-        WITH w, COUNT(DISTINCT neighbor) as connections, SUM(r.amount) as volume
-        WITH w, connections, volume
+        MATCH (w:Wallet)-[:INPUT|OUTPUT]-(t:Transaction)-[:INPUT|OUTPUT]-(neighbor:Wallet)
+        WHERE w.address <> neighbor.address
+        WITH w, COUNT(DISTINCT neighbor) as connections, COUNT(DISTINCT t) as txCount
         WHERE connections >= $minClusterSize
-        WITH w.address as communityId, COLLECT(w.address) as members,
-             COUNT(w) as size, SUM(connections) as edgeCount,
-             AVG(connections) as avgConnections, SUM(volume) as volume
+        WITH w.address as communityId, COLLECT(DISTINCT w.address) as members,
+             COUNT(w) as size, connections as edgeCount,
+             toFloat(connections) as avgConnections, txCount as volume
         RETURN 
             'COMM_' + substring(communityId, 0, 5) as communityId,
             members,
@@ -132,15 +132,16 @@ public interface AlgorithmRepository extends Neo4jRepository<Wallet, String> {
      * Calcula importancia de nodos (Page Rank simplificado)
      */
     @Query("""
-        MATCH (w:Wallet)
-        WITH w, size([(w)-[r]-() | r]) as degree, sum(r.amount) as volume
-        MATCH (w)-[incoming]-(neighbor)
-        WITH w, degree, volume, COUNT(DISTINCT neighbor) as inDegree, SUM(incoming.amount) as inVolume
+        MATCH (w:Wallet)-[:INPUT|OUTPUT]-(t:Transaction)
+        WITH w, COUNT(DISTINCT t) as degree
+        MATCH (w)-[:INPUT|OUTPUT]-(t2:Transaction)-[:INPUT|OUTPUT]-(neighbor:Wallet)
+        WHERE w.address <> neighbor.address
+        WITH w, degree, COUNT(DISTINCT neighbor) as inDegree, COUNT(DISTINCT t2) as txVolume
         RETURN 
             w.address as wallet,
             toFloat(degree + inDegree) / 2.0 as pageRank,
             inDegree,
-            COALESCE(volume, 0) as volume
+            txVolume as volume
         ORDER BY pageRank DESC
         LIMIT $topN
         """)

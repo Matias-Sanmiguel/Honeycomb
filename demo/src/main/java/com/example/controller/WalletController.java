@@ -20,8 +20,27 @@ public class WalletController {
 
         try {
             // Obtener datos reales de la wallet desde Neo4j
-            List<Map<String, Object>> recentTxs = walletRepository.findRecentTransactions(address, 50);
-            List<Map<String, Object>> connections = walletRepository.findConnectedWallets(address);
+            List<Map<String, Object>> recentTxsRaw = walletRepository.findRecentTransactions(address, 50);
+            List<Map<String, Object>> connectionsRaw = walletRepository.findConnectedWallets(address);
+
+            // Extraer los objetos "result" de los wrappers
+            List<Map<String, Object>> recentTxs = new ArrayList<>();
+            for (Map<String, Object> txWrapper : recentTxsRaw) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> tx = txWrapper.containsKey("result")
+                    ? (Map<String, Object>) txWrapper.get("result")
+                    : txWrapper;
+                recentTxs.add(tx);
+            }
+
+            List<Map<String, Object>> connections = new ArrayList<>();
+            for (Map<String, Object> connWrapper : connectionsRaw) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> conn = connWrapper.containsKey("result")
+                    ? (Map<String, Object>) connWrapper.get("result")
+                    : connWrapper;
+                connections.add(conn);
+            }
 
             response.put("address", address);
             response.put("totalTransactions", recentTxs.size());
