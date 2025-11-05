@@ -8,7 +8,6 @@ import org.springframework.data.neo4j.core.schema.Id;
 import org.springframework.data.neo4j.core.schema.Node;
 import org.springframework.data.neo4j.core.schema.Relationship;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -28,8 +27,8 @@ public class Transaction {
     
     private String blockHash;
     
-    private LocalDateTime confirmed;
-    
+    private String confirmed; // Cambiado de LocalDateTime a String para evitar problemas de conversión
+
     private Long totalInput;
     
     private Long totalOutput;

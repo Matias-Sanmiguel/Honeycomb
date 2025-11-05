@@ -1,5 +1,6 @@
 package com.example.service;
 
+import com.example.dto.PathQueryResult;
 import com.example.dto.PathResult;
 import com.example.repository.PathAnalysisRepository;
 import lombok.RequiredArgsConstructor;
@@ -24,9 +25,9 @@ public class PathAnalysisService {
         log.info("Finding path from {} to {}", fromAddress, toAddress);
         
         try {
-            Map<String, Object> pathData = pathAnalysisRepository.findShortestPath(fromAddress, toAddress);
-            
-            if (pathData == null || pathData.isEmpty()) {
+            PathQueryResult pathData = pathAnalysisRepository.findShortestPath(fromAddress, toAddress);
+
+            if (pathData == null || pathData.getPathLength() == null) {
                 return buildNoConnectionResult(fromAddress, toAddress);
             }
             
@@ -48,8 +49,14 @@ public class PathAnalysisService {
                 fromAddress, toAddress, maxLength);
         
         List<PathResult> results = new ArrayList<>();
-        for (Map<String, Object> pathData : pathsData) {
-            results.add(buildPathResult(fromAddress, toAddress, pathData));
+        for (Map<String, Object> pathDataWrapper : pathsData) {
+            // Extraer el objeto "result" del wrapper
+            @SuppressWarnings("unchecked")
+            Map<String, Object> pathData = pathDataWrapper.containsKey("result")
+                ? (Map<String, Object>) pathDataWrapper.get("result")
+                : pathDataWrapper;
+
+            results.add(buildPathResultFromMap(fromAddress, toAddress, pathData));
         }
         
         return results;
@@ -60,7 +67,21 @@ public class PathAnalysisService {
      */
     public List<Map<String, Object>> findWalletsWithinHops(String address, int hops) {
         log.info("Finding wallets within {} hops of {}", hops, address);
-        return pathAnalysisRepository.findWalletsWithinHops(address, hops);
+        List<Map<String, Object>> results = pathAnalysisRepository.findWalletsWithinHops(address, hops);
+
+        // Extraer el objeto "result" de cada mapa
+        List<Map<String, Object>> processedResults = new ArrayList<>();
+        for (Map<String, Object> result : results) {
+            if (result.containsKey("result")) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> innerResult = (Map<String, Object>) result.get("result");
+                processedResults.add(innerResult);
+            } else {
+                processedResults.add(result);
+            }
+        }
+
+        return processedResults;
     }
     
     /**
@@ -89,70 +110,132 @@ public class PathAnalysisService {
      * Construye el PathResult a partir de los datos de Neo4j
      */
     @SuppressWarnings("unchecked")
-    private PathResult buildPathResult(String fromAddress, String toAddress, Map<String, Object> pathData) {
-        Integer pathLength = (Integer) pathData.getOrDefault("pathLength", 0);
-        List<Map<String, Object>> nodes = (List<Map<String, Object>>) pathData.get("nodes");
-        List<Map<String, Object>> relationships = (List<Map<String, Object>>) pathData.get("relationships");
+    private PathResult buildPathResult(String fromAddress, String toAddress, PathQueryResult pathData) {
+        Integer pathLength = pathData.getPathLength();
+        List<Map<String, Object>> nodes = pathData.getNodes();
+        List<Map<String, Object>> relationships = pathData.getRelationships();
 
         List<PathResult.PathNode> pathNodes = new ArrayList<>();
+        Long totalAmount = 0L;
 
         // Procesar nodos y construir el path
-        if (nodes != null) {
+        if (nodes != null && !nodes.isEmpty()) {
             for (int i = 0; i < nodes.size(); i++) {
                 Map<String, Object> nodeData = nodes.get(i);
+                if (nodeData == null) continue;
+
                 List<String> labels = (List<String>) nodeData.get("labels");
                 String nodeType = labels != null && !labels.isEmpty() ? labels.get(0) : "UNKNOWN";
 
-                String address = null;
-                String txHash = null;
-
                 if ("Wallet".equals(nodeType)) {
-                    address = (String) nodeData.get("address");
-                } else if ("Transaction".equals(nodeType)) {
-                    txHash = (String) nodeData.get("hash");
-                    // For transactions, we might want to associate them with the *next* wallet in the path
-                    // or handle them as distinct steps. Let's find the next wallet.
+                    String address = (String) nodeData.get("address");
+
+                    // Buscar la siguiente transacción y su monto
+                    String txHash = null;
+                    Long amount = 0L;
+
+                    // La siguiente relación (si existe) tiene el monto
+                    if (relationships != null && i < relationships.size()) {
+                        Map<String, Object> rel = relationships.get(i);
+                        if (rel != null) {
+                            Object amountObj = rel.get("amount");
+                            if (amountObj != null) {
+                                amount = ((Number) amountObj).longValue();
+                                totalAmount += amount;
+                            }
+                        }
+                    }
+
+                    // La siguiente transacción (si existe) en los nodos
                     if (i + 1 < nodes.size()) {
-                        Map<String, Object> nextNodeData = nodes.get(i + 1);
-                        address = (String) nextNodeData.get("address");
+                        Map<String, Object> nextNode = nodes.get(i + 1);
+                        if (nextNode != null) {
+                            List<String> nextLabels = (List<String>) nextNode.get("labels");
+                            if (nextLabels != null && nextLabels.contains("Transaction")) {
+                                txHash = (String) nextNode.get("hash");
+                            }
+                        }
                     }
-                }
 
-                Long amount = 0L;
-                if (relationships != null && i < relationships.size()) {
-                    Map<String, Object> rel = relationships.get(i);
-                    Object valueObj = rel.get("amount"); // Changed from "value" to "amount"
-                    if (valueObj != null) {
-                        amount = ((Number) valueObj).longValue();
-                    }
-                }
-
-                if ("Wallet".equals(nodeType)) {
-                     pathNodes.add(PathResult.PathNode.builder()
-                        .address(address)
-                        .transactionHash(null) // Wallet nodes don't have a tx hash
-                        .amount(0L) // Amount is on the relationship
-                        .stepNumber(pathNodes.size() + 1)
-                        .nodeType(nodeType)
-                        .build());
-                } else if ("Transaction".equals(nodeType)) {
-                    // Let's update the last wallet node with transaction info
-                    if (!pathNodes.isEmpty()) {
-                        PathResult.PathNode lastNode = pathNodes.get(pathNodes.size() - 1);
-                        lastNode.setTransactionHash(txHash);
-                        lastNode.setAmount(amount);
-                    }
+                    pathNodes.add(PathResult.PathNode.builder()
+                            .address(address)
+                            .transactionHash(txHash)
+                            .amount(amount)
+                            .stepNumber(pathNodes.size() + 1)
+                            .nodeType(nodeType)
+                            .build());
                 }
             }
         }
 
-        // Calcular el total transferido
+        return PathResult.builder()
+                .fromAddress(fromAddress)
+                .toAddress(toAddress)
+                .connectionFound(true)
+                .pathLength(pathLength / 2) // Dividir por 2 porque cada salto son 2 relaciones
+                .path(pathNodes)
+                .totalAmountTransferred(totalAmount)
+                .build();
+    }
+
+    /**
+     * Construye el PathResult a partir de un Map (para findAllShortPaths)
+     */
+    @SuppressWarnings("unchecked")
+    private PathResult buildPathResultFromMap(String fromAddress, String toAddress, Map<String, Object> pathData) {
+        Integer pathLength = ((Number) pathData.getOrDefault("pathLength", 0)).intValue();
+        List<Map<String, Object>> nodes = (List<Map<String, Object>>) pathData.get("nodes");
+        List<Map<String, Object>> relationships = (List<Map<String, Object>>) pathData.get("relationships");
+
+        List<PathResult.PathNode> pathNodes = new ArrayList<>();
         Long totalAmount = 0L;
-        if (relationships != null) {
-            for (Map<String, Object> rel : relationships) {
-                Object valueObj = rel.get("amount"); // Changed from "value" to "amount"
-                if (valueObj != null) {
-                    totalAmount += ((Number) valueObj).longValue();
+
+        // Procesar nodos y construir el path
+        if (nodes != null && !nodes.isEmpty()) {
+            for (int i = 0; i < nodes.size(); i++) {
+                Map<String, Object> nodeData = nodes.get(i);
+                if (nodeData == null) continue;
+
+                List<String> labels = (List<String>) nodeData.get("labels");
+                String nodeType = labels != null && !labels.isEmpty() ? labels.get(0) : "UNKNOWN";
+
+                if ("Wallet".equals(nodeType)) {
+                    String address = (String) nodeData.get("address");
+
+                    // Buscar la siguiente transacción y su monto
+                    String txHash = null;
+                    Long amount = 0L;
+
+                    // La siguiente relación (si existe) tiene el monto
+                    if (relationships != null && i < relationships.size()) {
+                        Map<String, Object> rel = relationships.get(i);
+                        if (rel != null) {
+                            Object amountObj = rel.get("amount");
+                            if (amountObj != null) {
+                                amount = ((Number) amountObj).longValue();
+                                totalAmount += amount;
+                            }
+                        }
+                    }
+
+                    // La siguiente transacción (si existe) en los nodos
+                    if (i + 1 < nodes.size()) {
+                        Map<String, Object> nextNode = nodes.get(i + 1);
+                        if (nextNode != null) {
+                            List<String> nextLabels = (List<String>) nextNode.get("labels");
+                            if (nextLabels != null && nextLabels.contains("Transaction")) {
+                                txHash = (String) nextNode.get("hash");
+                            }
+                        }
+                    }
+
+                    pathNodes.add(PathResult.PathNode.builder()
+                            .address(address)
+                            .transactionHash(txHash)
+                            .amount(amount)
+                            .stepNumber(pathNodes.size() + 1)
+                            .nodeType(nodeType)
+                            .build());
                 }
             }
         }
@@ -161,7 +244,7 @@ public class PathAnalysisService {
                 .fromAddress(fromAddress)
                 .toAddress(toAddress)
                 .connectionFound(true)
-                .pathLength(pathLength)
+                .pathLength(pathLength / 2) // Dividir por 2 porque cada salto son 2 relaciones
                 .path(pathNodes)
                 .totalAmountTransferred(totalAmount)
                 .build();

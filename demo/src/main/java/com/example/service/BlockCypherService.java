@@ -217,16 +217,16 @@ public class BlockCypherService {
         return 0;
     }
     
-    private LocalDateTime parseTimestamp(Object timestamp) {
+    private String parseTimestamp(Object timestamp) {
         if (timestamp == null) return null;
         try {
             if (timestamp instanceof String) {
-                return LocalDateTime.parse((String) timestamp);
+                return (String) timestamp;
             } else if (timestamp instanceof Long) {
                 return LocalDateTime.ofInstant(
                         Instant.ofEpochSecond((Long) timestamp),
                         ZoneId.systemDefault()
-                );
+                ).toString();
             }
         } catch (Exception e) {
             log.warn("Could not parse timestamp: {}", timestamp);

@@ -20,27 +20,41 @@ public class WalletController {
 
         try {
             // Obtener datos reales de la wallet desde Neo4j
-            var recentTxs = walletRepository.findRecentTransactions(address, 50);
-            var connections = walletRepository.findConnectedWallets(address);
+            List<Map<String, Object>> recentTxs = walletRepository.findRecentTransactions(address, 50);
+            List<Map<String, Object>> connections = walletRepository.findConnectedWallets(address);
 
             response.put("address", address);
             response.put("totalTransactions", recentTxs.size());
             response.put("uniqueConnections", connections.size());
 
-            // Calcular métricas reales
+            // Calcular métricas reales de forma más segura
             long totalVolume = 0;
             try {
                 totalVolume = connections.stream()
                     .mapToLong(conn -> {
                         Object received = conn.get("received");
                         Object sent = conn.get("sent");
-                        long receivedVal = received != null ? ((Number) received).longValue() : 0;
-                        long sentVal = sent != null ? ((Number) sent).longValue() : 0;
+                        long receivedVal = 0;
+                        long sentVal = 0;
+
+                        if (received instanceof Number) {
+                            receivedVal = ((Number) received).longValue();
+                        } else if (received instanceof Double) {
+                            receivedVal = ((Double) received).longValue();
+                        }
+
+                        if (sent instanceof Number) {
+                            sentVal = ((Number) sent).longValue();
+                        } else if (sent instanceof Double) {
+                            sentVal = ((Double) sent).longValue();
+                        }
+
                         return receivedVal + sentVal;
                     })
                     .sum();
             } catch (Exception e) {
-                // Si falla el cálculo, usar 0
+                // Si falla el cálculo, usar 0 y loguear
+                System.out.println("Error calculating volume: " + e.getMessage());
                 totalVolume = 0;
             }
 
@@ -50,23 +64,34 @@ public class WalletController {
             response.put("totalVolume", totalVolume);
             response.put("averageTransactionAmount", avgTxAmount);
 
-            // Top conexiones
+            // Top conexiones con manejo robusto de errores
             List<Map<String, Object>> topConnections = new ArrayList<>();
-            for (int i = 0; i < Math.min(5, connections.size()); i++) {
-                Map<String, Object> conn = connections.get(i);
-                Map<String, Object> topConn = new HashMap<>();
-                topConn.put("address", conn.get("address"));
-                topConn.put("transactionCount", conn.get("txCount"));
+            try {
+                for (int i = 0; i < Math.min(5, connections.size()); i++) {
+                    Map<String, Object> conn = connections.get(i);
+                    Map<String, Object> topConn = new HashMap<>();
+                    topConn.put("address", conn.getOrDefault("address", "unknown"));
+                    topConn.put("transactionCount", conn.getOrDefault("txCount", 0));
 
-                Object received = conn.get("received");
-                Object sent = conn.get("sent");
-                long receivedVal = received != null ? ((Number) received).longValue() : 0;
-                long sentVal = sent != null ? ((Number) sent).longValue() : 0;
+                    Object received = conn.get("received");
+                    Object sent = conn.get("sent");
+                    long receivedVal = 0;
+                    long sentVal = 0;
 
-                topConn.put("totalAmount", receivedVal + sentVal);
-                topConn.put("direction", conn.get("direction"));
+                    if (received instanceof Number) {
+                        receivedVal = ((Number) received).longValue();
+                    }
+                    if (sent instanceof Number) {
+                        sentVal = ((Number) sent).longValue();
+                    }
 
-                topConnections.add(topConn);
+                    topConn.put("totalAmount", receivedVal + sentVal);
+                    topConn.put("direction", conn.getOrDefault("direction", "UNKNOWN"));
+
+                    topConnections.add(topConn);
+                }
+            } catch (Exception e) {
+                System.out.println("Error processing top connections: " + e.getMessage());
             }
 
             response.put("topConnections", topConnections);
@@ -90,14 +115,18 @@ public class WalletController {
             response.put("executionTime", (System.currentTimeMillis() - startTime) + "ms");
 
         } catch (Exception e) {
-            response.put("error", "Error analizando wallet: " + e.getMessage());
+            System.err.println("Error analyzing wallet: " + e.getMessage());
+            e.printStackTrace();
+
+            // Respuesta más amigable en caso de error
             response.put("address", address);
-            response.put("executionTime", (System.currentTimeMillis() - startTime) + "ms");
-            // Agregar valores por defecto en caso de error
             response.put("totalTransactions", 0);
             response.put("uniqueConnections", 0);
             response.put("totalVolume", 0);
             response.put("riskScore", 0.0);
+            response.put("topConnections", new ArrayList<>());
+            response.put("suspiciousPatterns", List.of("Error: Could not analyze wallet - " + e.getMessage()));
+            response.put("executionTime", (System.currentTimeMillis() - startTime) + "ms");
         }
 
         return response;

@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -26,17 +27,50 @@ public class NetworkAnalysisService {
     public NetworkAnalysisResult analyzeWalletNetwork(String address) {
         log.info("Analyzing network for wallet: {}", address);
         
-        // 1. Asegurar que la wallet existe en la base de datos
-        Wallet wallet = ensureWalletExists(address);
-        
-        // 2. Obtener el análisis de red desde Neo4j
-        Map<String, Object> networkData = walletRepository.analyzeNetwork(address);
-        
-        // 3. Obtener información detallada de conexiones
-        List<Map<String, Object>> connectedWalletsData = walletRepository.findConnectedWallets(address);
-        
-        // 4. Procesar y construir el resultado
-        return buildNetworkAnalysisResult(wallet, connectedWalletsData);
+        try {
+            // 1. Buscar la wallet en la base de datos
+            Optional<Wallet> walletOpt = walletRepository.findById(address);
+
+            if (walletOpt.isEmpty()) {
+                log.warn("Wallet not found in database: {}", address);
+                // Retornar resultado vacío en lugar de fallar
+                return NetworkAnalysisResult.builder()
+                        .address(address)
+                        .balance(0L)
+                        .totalTransactions(0)
+                        .totalReceived(0L)
+                        .totalSent(0L)
+                        .directConnections(0)
+                        .connectedWallets(new ArrayList<>())
+                        .recentTransactions(new ArrayList<>())
+                        .riskLevel("UNKNOWN")
+                        .tags(new ArrayList<>())
+                        .build();
+            }
+
+            Wallet wallet = walletOpt.get();
+
+            // 2. Obtener información detallada de conexiones
+            List<Map<String, Object>> connectedWalletsData = walletRepository.findConnectedWallets(address);
+
+            // 3. Procesar y construir el resultado
+            return buildNetworkAnalysisResult(wallet, connectedWalletsData);
+        } catch (Exception e) {
+            log.error("Error analyzing network for wallet: " + address, e);
+            // Retornar resultado vacío en caso de error
+            return NetworkAnalysisResult.builder()
+                    .address(address)
+                    .balance(0L)
+                    .totalTransactions(0)
+                    .totalReceived(0L)
+                    .totalSent(0L)
+                    .directConnections(0)
+                    .connectedWallets(new ArrayList<>())
+                    .recentTransactions(new ArrayList<>())
+                    .riskLevel("ERROR")
+                    .tags(new ArrayList<>())
+                    .build();
+        }
     }
     
     /**
@@ -46,7 +80,12 @@ public class NetworkAnalysisService {
         return walletRepository.findById(address)
                 .orElseGet(() -> {
                     log.info("Wallet {} not found, fetching from BlockCypher", address);
-                    return blockCypherService.fetchAndSaveWallet(address, "BTC");
+                    try {
+                        return blockCypherService.fetchAndSaveWallet(address, "BTC");
+                    } catch (Exception e) {
+                        log.error("Error fetching wallet from BlockCypher: " + address, e);
+                        return null;
+                    }
                 });
     }
     

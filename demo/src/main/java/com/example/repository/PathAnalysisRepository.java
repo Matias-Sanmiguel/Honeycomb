@@ -1,5 +1,6 @@
 package com.example.repository;
 
+import com.example.dto.PathQueryResult;
 import com.example.model.Wallet;
 import org.springframework.data.neo4j.repository.Neo4jRepository;
 import org.springframework.data.neo4j.repository.query.Query;
@@ -22,20 +23,18 @@ public interface PathAnalysisRepository extends Neo4jRepository<Wallet, String> 
      */
     @Query("MATCH (w1:Wallet {address: $address1}), (w2:Wallet {address: $address2}) " +
             "MATCH path = shortestPath((w1)-[:INPUT|OUTPUT*..20]-(w2)) " +
-            "WITH path, " +
-            "     length(path) as pathLength, " +
-            "     [n in nodes(path) | n] as pathNodes, " +
-            "     relationships(path) as pathRels " +
-            "WHERE pathLength > 0 AND pathLength % 2 = 0 " +
-            "RETURN path, " +
-            "       pathLength, " +
-            "       [i in range(0, size(pathNodes)-1) | " +
-            "           CASE WHEN 'Wallet' IN labels(pathNodes[i]) THEN {address: pathNodes[i].address, labels: labels(pathNodes[i])} " +
-            "                WHEN 'Transaction' IN labels(pathNodes[i]) THEN {hash: pathNodes[i].hash, labels: labels(pathNodes[i])} " +
-            "           END " +
-            "       ] as nodes, " +
-            "       [r in pathRels | {type: type(r), amount: r.amount}] as relationships")
-    Map<String, Object> findShortestPath(
+            "WHERE length(path) > 0 AND length(path) % 2 = 0 " +
+            "WITH length(path) as pathLength, " +
+            "     [i in range(0, size(nodes(path))-1) | " +
+            "       CASE WHEN 'Wallet' IN labels(nodes(path)[i]) " +
+            "            THEN {address: nodes(path)[i].address, labels: labels(nodes(path)[i])} " +
+            "            WHEN 'Transaction' IN labels(nodes(path)[i]) " +
+            "            THEN {hash: nodes(path)[i].hash, labels: labels(nodes(path)[i])} " +
+            "       END " +
+            "     ] as nodes, " +
+            "     [r in relationships(path) | {type: type(r), amount: r.amount}] as relationships " +
+            "RETURN pathLength, nodes, relationships")
+    PathQueryResult findShortestPath(
             @Param("address1") String address1,
             @Param("address2") String address2
     );
@@ -47,8 +46,19 @@ public interface PathAnalysisRepository extends Neo4jRepository<Wallet, String> 
     @Query("MATCH (w1:Wallet {address: $address1}), (w2:Wallet {address: $address2}) " +
            "MATCH path = allShortestPaths((w1)-[:INPUT|OUTPUT*..20]-(w2)) " +
            "WHERE length(path) <= ($maxLength * 2) AND length(path) % 2 = 0 AND length(path) > 0 " +
-           "WITH path, length(path) as pathLength " +
-           "RETURN path, pathLength " +
+           "WITH path, " +
+           "     length(path) as pathLength, " +
+           "     nodes(path) as pathNodes, " +
+           "     relationships(path) as pathRels " +
+           "RETURN {pathLength: pathLength, " +
+           "        nodes: [i in range(0, size(pathNodes)-1) | " +
+           "          CASE WHEN 'Wallet' IN labels(pathNodes[i]) " +
+           "               THEN {address: pathNodes[i].address, labels: labels(pathNodes[i])} " +
+           "               WHEN 'Transaction' IN labels(pathNodes[i]) " +
+           "               THEN {hash: pathNodes[i].hash, labels: labels(pathNodes[i])} " +
+           "          END " +
+           "        ], " +
+           "        relationships: [r in pathRels | {type: type(r), amount: r.amount}]} as result " +
            "ORDER BY pathLength ASC " +
            "LIMIT 10")
     List<Map<String, Object>> findAllShortPaths(
@@ -66,11 +76,11 @@ public interface PathAnalysisRepository extends Neo4jRepository<Wallet, String> 
            "WITH DISTINCT connected, " +
            "     shortestPath((w)-[:INPUT|OUTPUT*]-(connected)) as path " +
            "WHERE length(path) <= ($hops * 2) AND length(path) % 2 = 0 " +
-           "RETURN DISTINCT connected.address as address, " +
-           "       connected.balance as balance, " +
-           "       connected.txCount as txCount, " +
-           "       length(path) / 2 as hops " +
-           "ORDER BY hops ASC " +
+           "RETURN {address: connected.address, " +
+           "        balance: connected.balance, " +
+           "        txCount: connected.txCount, " +
+           "        hops: length(path) / 2} as result " +
+           "ORDER BY length(path) ASC " +
            "LIMIT 100")
     List<Map<String, Object>> findWalletsWithinHops(
             @Param("address") String address,
