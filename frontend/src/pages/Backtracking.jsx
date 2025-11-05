@@ -16,15 +16,15 @@ const Backtracking = () => {
 
     setLoading(true);
     try {
-      // Usar endpoint simple que no requiere búsqueda por dirección
-      // Muestra las wallets más centrales de toda la red
-      const url = `/api/algorithms/graph/centrality?topN=20`;
+      // Usar el endpoint correcto de Network Analysis
+      const url = `http://localhost:8080/api/forensic/network/${sourceAddress}`;
       console.log('Fetching:', url);
       const response = await fetch(url);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const data = await response.json();
+      console.log('Response data:', data);
       setResults(data);
     } catch (error) {
       console.error('Error:', error);
@@ -37,6 +37,8 @@ const Backtracking = () => {
   // Helpers para extraer los items correctamente
   const getItems = (res) => {
     if (!res) return [];
+    // Para Network Analysis, los datos están en connectedWallets
+    if (res.connectedWallets && Array.isArray(res.connectedWallets)) return res.connectedWallets;
     if (res.topCentralWallets && Array.isArray(res.topCentralWallets)) return res.topCentralWallets;
     if (res.walletNodes && Array.isArray(res.walletNodes)) return res.walletNodes;
     if (res.connections && Array.isArray(res.connections)) return res.connections;

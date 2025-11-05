@@ -112,18 +112,16 @@ public interface AlgorithmRepository extends Neo4jRepository<Wallet, String> {
         MATCH (w:Wallet)-[:INPUT|OUTPUT]-(t:Transaction)-[:INPUT|OUTPUT]-(neighbor:Wallet)
         WHERE w.address <> neighbor.address
         WITH w, COUNT(DISTINCT neighbor) as connections, COUNT(DISTINCT t) as txCount
-        WHERE connections >= $minClusterSize
-        WITH w.address as communityId, COLLECT(DISTINCT w.address) as members,
-             COUNT(w) as size, connections as edgeCount,
-             toFloat(connections) as avgConnections, txCount as volume
-        RETURN 
-            'COMM_' + substring(communityId, 0, 5) as communityId,
-            members,
-            size,
-            edgeCount,
-            avgConnections,
-            volume
-        ORDER BY size DESC
+        WHERE connections >= COALESCE($minClusterSize, 1)
+        RETURN {
+            communityId: 'COMM_' + substring(w.address, 0, 8),
+            members: [w.address],
+            size: 1,
+            edgeCount: connections,
+            avgConnections: toFloat(connections),
+            volume: txCount
+        } as result
+        ORDER BY connections DESC
         LIMIT 50
         """)
     List<Map<String, Object>> detectCommunities(Integer minClusterSize);
@@ -133,16 +131,17 @@ public interface AlgorithmRepository extends Neo4jRepository<Wallet, String> {
      */
     @Query("""
         MATCH (w:Wallet)-[:INPUT|OUTPUT]-(t:Transaction)
-        WITH w, COUNT(DISTINCT t) as degree
+        WITH w, COUNT(DISTINCT t) as txCount
         MATCH (w)-[:INPUT|OUTPUT]-(t2:Transaction)-[:INPUT|OUTPUT]-(neighbor:Wallet)
         WHERE w.address <> neighbor.address
-        WITH w, degree, COUNT(DISTINCT neighbor) as inDegree, COUNT(DISTINCT t2) as txVolume
-        RETURN 
-            w.address as wallet,
-            toFloat(degree + inDegree) / 2.0 as pageRank,
-            inDegree,
-            txVolume as volume
-        ORDER BY pageRank DESC
+        WITH w, txCount, COUNT(DISTINCT neighbor) as connections, COUNT(DISTINCT t2) as totalTxs
+        RETURN {
+            wallet: w.address,
+            pageRank: toFloat(txCount + connections) / 2.0,
+            inDegree: connections,
+            volume: totalTxs
+        } as result
+        ORDER BY toFloat(txCount + connections) DESC
         LIMIT $topN
         """)
     List<Map<String, Object>> calculateNodeImportance(Integer topN);

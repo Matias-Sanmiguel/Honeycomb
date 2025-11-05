@@ -51,10 +51,33 @@ public class NetworkAnalysisService {
             Wallet wallet = walletOpt.get();
 
             // 2. Obtener información detallada de conexiones
-            List<Map<String, Object>> connectedWalletsData = walletRepository.findConnectedWallets(address);
+            List<Map<String, Object>> connectedWalletsDataRaw = walletRepository.findConnectedWallets(address);
 
-            // 3. Procesar y construir el resultado
-            return buildNetworkAnalysisResult(wallet, connectedWalletsData);
+            // Extraer los objetos "result" de los wrappers
+            List<Map<String, Object>> connectedWalletsData = new ArrayList<>();
+            for (Map<String, Object> wrapper : connectedWalletsDataRaw) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> data = wrapper.containsKey("result")
+                    ? (Map<String, Object>) wrapper.get("result")
+                    : wrapper;
+                connectedWalletsData.add(data);
+            }
+
+            // 3. Obtener transacciones recientes
+            List<Map<String, Object>> recentTxsRaw = walletRepository.findRecentTransactions(address, 10);
+
+            // Extraer los objetos "result" de los wrappers
+            List<Map<String, Object>> recentTxsData = new ArrayList<>();
+            for (Map<String, Object> wrapper : recentTxsRaw) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> data = wrapper.containsKey("result")
+                    ? (Map<String, Object>) wrapper.get("result")
+                    : wrapper;
+                recentTxsData.add(data);
+            }
+
+            // 4. Procesar y construir el resultado
+            return buildNetworkAnalysisResult(wallet, connectedWalletsData, recentTxsData);
         } catch (Exception e) {
             log.error("Error analyzing network for wallet: " + address, e);
             // Retornar resultado vacío en caso de error
@@ -94,8 +117,9 @@ public class NetworkAnalysisService {
      */
     private NetworkAnalysisResult buildNetworkAnalysisResult(
             Wallet wallet, 
-            List<Map<String, Object>> connectedWalletsData) {
-        
+            List<Map<String, Object>> connectedWalletsData,
+            List<Map<String, Object>> recentTxsData) {
+
         // Convertir datos de wallets conectadas
         List<NetworkAnalysisResult.ConnectedWallet> connectedWallets = connectedWalletsData.stream()
                 .map(data -> NetworkAnalysisResult.ConnectedWallet.builder()
@@ -110,8 +134,7 @@ public class NetworkAnalysisService {
                 .collect(Collectors.toList());
         
         // Obtener transacciones recientes
-        List<Map<String, Object>> recentTxData = walletRepository.findRecentTransactions(wallet.getAddress(), 20);
-        List<NetworkAnalysisResult.TransactionSummary> recentTransactions = recentTxData.stream()
+        List<NetworkAnalysisResult.TransactionSummary> recentTransactions = recentTxsData.stream()
                 .map(tx -> NetworkAnalysisResult.TransactionSummary.builder()
                         .hash((String) tx.get("hash"))
                         .amount(((Number) tx.getOrDefault("amount", 0L)).longValue())

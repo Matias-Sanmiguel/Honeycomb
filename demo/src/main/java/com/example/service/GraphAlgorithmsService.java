@@ -99,10 +99,21 @@ public class GraphAlgorithmsService {
         log.info("Detecting communities with minClusterSize: {}", minClusterSize);
 
         try {
-            List<Map<String, Object>> communityData = algorithmRepository.detectCommunities(minClusterSize);
+            List<Map<String, Object>> communityDataRaw = algorithmRepository.detectCommunities(minClusterSize);
+
+            // Extraer los objetos "result" de los wrappers
+            List<Map<String, Object>> communityData = new ArrayList<>();
+            for (Map<String, Object> wrapper : communityDataRaw) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> data = wrapper.containsKey("result")
+                    ? (Map<String, Object>) wrapper.get("result")
+                    : wrapper;
+                communityData.add(data);
+            }
 
             List<CommunityResult> results = communityData.stream()
                     .map(data -> {
+                        @SuppressWarnings("unchecked")
                         List<String> members = (List<String>) data.get("members");
                         Integer edgeCount = ((Number) data.get("edgeCount")).intValue();
                         Integer size = ((Number) data.get("size")).intValue();
@@ -146,7 +157,17 @@ public class GraphAlgorithmsService {
         log.info("Analyzing node importance for top {} nodes", topN);
 
         try {
-            List<Map<String, Object>> importanceData = algorithmRepository.calculateNodeImportance(topN);
+            List<Map<String, Object>> importanceDataRaw = algorithmRepository.calculateNodeImportance(topN);
+
+            // Extraer los objetos "result" de los wrappers
+            List<Map<String, Object>> importanceData = new ArrayList<>();
+            for (Map<String, Object> wrapper : importanceDataRaw) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> data = wrapper.containsKey("result")
+                    ? (Map<String, Object>) wrapper.get("result")
+                    : wrapper;
+                importanceData.add(data);
+            }
 
             List<CentralityResult> results = importanceData.stream()
                     .map(data -> CentralityResult.builder()
