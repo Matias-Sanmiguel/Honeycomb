@@ -30,23 +30,7 @@ public class AlgorithmController {
     private final BacktrackingService backtrackingService;
     private final BranchBoundService branchBoundService;
 
-    // GREEDY ALGORITHMS
-
-    /**
-     * ENDPOINT 1: Análisis Greedy de Peel Chains
-     *
-     * POST /api/algorithms/greedy/peel-chains
-     *
-     * Complejidad: O(n log n)
-     * Descripción: Detecta patrones de peel chain usando selección greedy
-     *
-     * Request:
-     * {
-     *   "threshold": 0.95,
-     *   "limit": 50,
-     *   "sortBy": "spendingPercentage"
-     * }
-     */
+    // GREEDY ALGORITHMSSS
     @PostMapping("/greedy/peel-chains")
     public ResponseEntity<Map<String, Object>> analyzePeelChainsGreedy(
             @RequestBody AlgorithmRequest request) {

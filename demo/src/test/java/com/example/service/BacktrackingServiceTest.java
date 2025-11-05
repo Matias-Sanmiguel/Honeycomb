@@ -25,11 +25,14 @@ class BacktrackingServiceTest {
     @Mock
     private TransactionRepository transactionRepository;
 
+    @Mock
+    private org.springframework.data.neo4j.core.Neo4jClient neo4jClient;
+
     private BacktrackingService service;
 
     @BeforeEach
     void setUp() {
-        service = new BacktrackingService(transactionRepository);
+        service = new BacktrackingService(transactionRepository, neo4jClient);
     }
 
     @Test

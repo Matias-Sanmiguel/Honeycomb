@@ -24,11 +24,14 @@ class BranchBoundServiceTest {
     @Mock
     private TransactionRepository transactionRepository;
 
+    @Mock
+    private org.springframework.data.neo4j.core.Neo4jClient neo4jClient;
+
     private BranchBoundService service;
 
     @BeforeEach
     void setUp() {
-        service = new BranchBoundService(transactionRepository);
+        service = new BranchBoundService(transactionRepository, neo4jClient);
     }
 
     @Test

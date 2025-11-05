@@ -1,36 +1,5 @@
-version: "3.8"
-
+# Compose v2: no uses "version:" (es obsoleto)
 services:
-  # Servicio app comentado - el backend se inicia con start-all.sh
-  # app:
-  #   build:
-  #     context: ./demo
-  #     dockerfile: Dockerfile
-  #   image: honeycomb-app:latest
-  #   container_name: honeycomb-forensic-app
-  #   ports:
-  #     - "8080:8080"
-  #   environment:
-  #     - SPRING_PROFILES_ACTIVE=prod
-  #     - SPRING_NEO4J_URI=bolt://neo4j:7687
-  #     - SPRING_NEO4J_AUTHENTICATION_USERNAME=neo4j
-  #     - SPRING_NEO4J_AUTHENTICATION_PASSWORD=password
-  #     - SPRING_DATA_NEO4J_DATABASE=neo4j
-  #     - LOGGING_LEVEL_COM_EXAMPLE=INFO
-  #     - BLOCKCYPHER_API_BASE_URL=https://api.blockcypher.com/v1
-  #   depends_on:
-  #     neo4j:
-  #       condition: service_healthy
-  #   restart: unless-stopped
-  #   networks:
-  #     - honeycomb-net
-  #   healthcheck:
-  #     test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health || http://localhost:8080/"]
-  #     interval: 30s
-  #     timeout: 10s
-  #     retries: 5
-  #     start_period: 60s
-
   neo4j:
     image: neo4j:5.15-community
     container_name: honeycomb-neo4j
@@ -60,6 +29,61 @@ services:
       start_period: 30s
     networks:
       - honeycomb-net
+
+  # === Backend (Spring) ===
+  app:
+    build:
+      context: ./demo         # <-- ajustá si tu backend NO está en ./demo
+      dockerfile: Dockerfile
+    image: honeycomb-app:latest
+    container_name: honeycomb-forensic-app
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_NEO4J_URI=bolt://neo4j:7687
+      - SPRING_NEO4J_AUTHENTICATION_USERNAME=neo4j
+      - SPRING_NEO4J_AUTHENTICATION_PASSWORD=password
+      - SPRING_DATA_NEO4J_DATABASE=neo4j
+      - LOGGING_LEVEL_COM_EXAMPLE=INFO
+      - BLOCKCYPHER_API_BASE_URL=https://api.blockcypher.com/v1
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - honeycomb-net
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health"]   # si no tenés actuator, cambiá por "/"
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # === Frontend (modo DEV con Vite) ===
+  web:
+    image: node:18
+    container_name: honeycomb-web
+    working_dir: /app
+    volumes:
+      - ./frontend:/app:Z
+    command: ["sh","-lc","npm ci && npm run dev -- --host 0.0.0.0 --port 5173"]
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8080
+    ports:
+      - "5173:5173"
+    depends_on:
+      - app
+    networks:
+      - honeycomb-net
+
+    # Si tu dev server tarda un poco:
+    healthcheck:
+      test: ["CMD-SHELL","wget -qO- http://localhost:5173 >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
 
 volumes:
   neo4j-data:
