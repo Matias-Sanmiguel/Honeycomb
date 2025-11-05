@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import NetworkGraph from '../components/NetworkGraph';
+import { StatsCards } from '../components/ChartVisualizations';
 import './BranchBound.css';
 
 const BranchBound = () => {
@@ -77,19 +79,90 @@ const BranchBound = () => {
 
       {results && (
         <div className="results-section">
-          <h2>Resultados</h2>
+          <h2>Ruta Óptima Encontrada</h2>
           {results.path ? (
-            <div className="path-info">
-              <p><strong>Costo Total:</strong> {results.totalCost}</p>
-              <p><strong>Longitud:</strong> {results.pathLength}</p>
-              <div className="path-visualization">
-                {results.path.map((address, idx) => (
-                  <span key={idx} className="address-node">{address}</span>
-                ))}
+            <>
+              {/* Métricas principales */}
+              <div className="metrics-cards">
+                <div className="metric-card-bb">
+                  <div className="metric-icon">💰</div>
+                  <div className="metric-content">
+                    <div className="metric-label">Costo Total</div>
+                    <div className="metric-value">{results.totalCost || 0}</div>
+                  </div>
+                </div>
+                <div className="metric-card-bb">
+                  <div className="metric-icon">📏</div>
+                  <div className="metric-content">
+                    <div className="metric-label">Longitud del Camino</div>
+                    <div className="metric-value">{results.pathLength || results.path.length}</div>
+                  </div>
+                </div>
+                <div className="metric-card-bb">
+                  <div className="metric-icon">🎯</div>
+                  <div className="metric-content">
+                    <div className="metric-label">Nodos Explorados</div>
+                    <div className="metric-value">{results.nodesExplored || '—'}</div>
+                  </div>
+                </div>
               </div>
-            </div>
+
+              {/* Visualización del grafo */}
+              <NetworkGraph
+                data={results}
+                width={window.innerWidth - 100}
+                height={500}
+              />
+
+              {/* Visualización del camino paso a paso */}
+              <div className="path-section">
+                <h3>🛤️ Camino Óptimo</h3>
+                <div className="path-visualization-bb">
+                  {results.path.map((address, idx) => (
+                    <React.Fragment key={idx}>
+                      <div className="path-step">
+                        <div className="step-number">{idx + 1}</div>
+                        <div className="step-address">
+                          <span className="address-label">
+                            {idx === 0 ? '🟢 Origen' : idx === results.path.length - 1 ? '🔴 Destino' : '🔵 Intermedio'}
+                          </span>
+                          <span className="address-value">{address.substring(0, 12)}...</span>
+                        </div>
+                      </div>
+                      {idx < results.path.length - 1 && (
+                        <div className="path-connector">
+                          <div className="connector-line"></div>
+                          <div className="connector-arrow">→</div>
+                        </div>
+                      )}
+                    </React.Fragment>
+                  ))}
+                </div>
+              </div>
+
+              {/* Información adicional */}
+              {results.algorithm && (
+                <div className="algorithm-info-panel">
+                  <h3>ℹ️ Información del Algoritmo</h3>
+                  <div className="info-grid-bb">
+                    <div className="info-item-bb">
+                      <span className="label">Algoritmo:</span>
+                      <span className="value">{results.algorithm}</span>
+                    </div>
+                    {results.executionTime && (
+                      <div className="info-item-bb">
+                        <span className="label">Tiempo de Ejecución:</span>
+                        <span className="value">{results.executionTime}ms</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </>
           ) : (
-            <p>No se encontró una ruta</p>
+            <div className="no-path-found">
+              <p>❌ No se encontró una ruta entre las direcciones especificadas</p>
+            </div>
           )}
         </div>
       )}

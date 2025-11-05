@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import NetworkGraph from '../components/NetworkGraph';
+import { TransactionBarChart, AmountPieChart, ActivityLineChart, StatsCards } from '../components/ChartVisualizations';
 import './PatternMatching.css';
 
 const PatternMatching = () => {
@@ -116,22 +118,88 @@ const PatternMatching = () => {
 
         {results && (
           <div className="results-section">
-            <h2>Resultados</h2>
-            {Array.isArray(results) ? (
-              <div className="patterns-list">
-                {results.length > 0 ? (
-                  results.map((item, idx) => (
-                    <div key={idx} className="pattern-card">
-                      <h3>Patrón {idx + 1}</h3>
-                      <pre>{JSON.stringify(item, null, 2)}</pre>
-                    </div>
-                  ))
-                ) : (
-                  <p>No se encontraron patrones</p>
+            <h2>Resultados del Análisis</h2>
+            {Array.isArray(results) && results.length > 0 ? (
+              <>
+                {/* Tarjetas de estadísticas */}
+                <StatsCards data={results} />
+
+                {/* Visualización de grafo si hay datos relacionales */}
+                {patternType === 'peel-chains' && (
+                  <NetworkGraph
+                    data={{ chains: results }}
+                    width={window.innerWidth - 100}
+                    height={500}
+                  />
                 )}
-              </div>
+
+                {/* Gráficos de análisis */}
+                <div className="charts-grid">
+                  <TransactionBarChart data={results.slice(0, 15)} />
+                  <AmountPieChart data={results.slice(0, 7)} />
+                  <ActivityLineChart data={results.slice(0, 20)} />
+                </div>
+
+                {/* Tabla de detalles */}
+                <div className="patterns-table-container">
+                  <h3>📊 Detalles de Patrones Detectados</h3>
+                  <div className="patterns-list">
+                    {results.map((item, idx) => (
+                      <div key={idx} className="pattern-card">
+                        <div className="card-header">
+                          <h3>
+                            {patternType === 'peel-chains' ? '🔗 Peel Chain' :
+                             patternType === 'large-transactions' ? '💰 Transacción Grande' :
+                             patternType === 'suspicious-patterns' ? '⚠️ Patrón Sospechoso' :
+                             '📈 Estadística'} #{idx + 1}
+                          </h3>
+                          {item.totalAmount && (
+                            <span className="badge">
+                              {(item.totalAmount / 100000000).toFixed(4)} BTC
+                            </span>
+                          )}
+                        </div>
+                        <div className="card-body">
+                          {item.wallet && (
+                            <div className="info-row">
+                              <span className="label">Wallet:</span>
+                              <span className="value">{item.wallet}</span>
+                            </div>
+                          )}
+                          {item.transactionHash && (
+                            <div className="info-row">
+                              <span className="label">Hash:</span>
+                              <span className="value">{item.transactionHash}</span>
+                            </div>
+                          )}
+                          {item.transactionCount && (
+                            <div className="info-row">
+                              <span className="label">Transacciones:</span>
+                              <span className="value">{item.transactionCount}</span>
+                            </div>
+                          )}
+                          {item.chainLength && (
+                            <div className="info-row">
+                              <span className="label">Longitud Cadena:</span>
+                              <span className="value">{item.chainLength}</span>
+                            </div>
+                          )}
+                          {item.avgAmount && (
+                            <div className="info-row">
+                              <span className="label">Monto Promedio:</span>
+                              <span className="value">{(item.avgAmount / 100000000).toFixed(8)} BTC</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
             ) : (
-              <pre>{JSON.stringify(results, null, 2)}</pre>
+              <div className="no-results-message">
+                <p>No se encontraron patrones</p>
+              </div>
             )}
           </div>
         )}

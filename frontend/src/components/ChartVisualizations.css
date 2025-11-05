@@ -1,0 +1,62 @@
+          <span>Normal</span>
+        </div>
+      </div>
+
+      {graphData.nodes.length > 0 ? (
+        <ForceGraph2D
+          ref={fgRef}
+          graphData={graphData}
+          width={width}
+          height={height}
+          nodeLabel={(node) => `
+            <div style="background: rgba(0,0,0,0.8); color: white; padding: 8px; border-radius: 4px;">
+              <strong>${node.name}</strong><br/>
+              ${node.transactionCount ? `Transacciones: ${node.transactionCount}<br/>` : ''}
+              ${node.totalAmount ? `Monto: ${node.totalAmount.toLocaleString()}<br/>` : ''}
+              ${node.degree ? `Grado: ${node.degree}` : ''}
+            </div>
+          `}
+          nodeCanvasObject={(node, ctx, globalScale) => {
+            const label = node.name;
+            const fontSize = 12 / globalScale;
+            ctx.font = `${fontSize}px Sans-Serif`;
+
+            const isHighlight = highlightNodes.has(node);
+
+            // Dibujar nodo
+            ctx.beginPath();
+            ctx.arc(node.x, node.y, node.val, 0, 2 * Math.PI, false);
+            ctx.fillStyle = isHighlight ? node.color : `${node.color}88`;
+            ctx.fill();
+
+            if (isHighlight) {
+              ctx.strokeStyle = '#fff';
+              ctx.lineWidth = 2 / globalScale;
+              ctx.stroke();
+            }
+
+            // Dibujar etiqueta
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = isHighlight ? '#fff' : '#aaa';
+            ctx.fillText(label, node.x, node.y + node.val + fontSize);
+          }}
+          linkWidth={link => highlightLinks.has(link) ? 3 : 1}
+          linkColor={link => highlightLinks.has(link) ? '#fff' : '#999'}
+          linkDirectionalParticles={link => highlightLinks.has(link) ? 4 : 0}
+          linkDirectionalParticleWidth={3}
+          onNodeHover={handleNodeHover}
+          cooldownTicks={100}
+          onEngineStop={() => fgRef.current?.zoomToFit(400)}
+        />
+      ) : (
+        <div className="no-graph-data">
+          <p>No hay datos para visualizar</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default NetworkGraph;
+

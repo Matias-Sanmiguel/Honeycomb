@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import NetworkGraph from '../components/NetworkGraph';
+import { TransactionBarChart, StatsCards, NetworkRadarChart } from '../components/ChartVisualizations';
 import './Backtracking.css';
 
 const Backtracking = () => {
@@ -107,15 +109,60 @@ const Backtracking = () => {
             <p><strong>Algoritmo:</strong> {results.algorithm}</p>
             <p><strong>Total de Wallets:</strong> {results.resultCount}</p>
           </div>
+
           {items.length > 0 ? (
-            <div className="cycles-list">
-              {items.map((item, index) => (
-                <div key={index} className="cycle-card">
-                  <h3>Wallet {index + 1}</h3>
-                  <pre>{JSON.stringify(item, null, 2)}</pre>
+            <>
+              {/* Tarjetas de estadísticas */}
+              <StatsCards data={items} />
+
+              {/* Visualización del grafo de red */}
+              <NetworkGraph data={results} width={window.innerWidth - 100} height={600} />
+
+              {/* Gráficos adicionales */}
+              <div className="charts-grid">
+                <TransactionBarChart data={items.slice(0, 10)} />
+                <NetworkRadarChart data={items} />
+              </div>
+
+              {/* Lista de detalles */}
+              <div className="details-section">
+                <h3>📋 Detalles de Wallets</h3>
+                <div className="cycles-list">
+                  {items.map((item, index) => (
+                    <div key={index} className="cycle-card">
+                      <div className="card-header">
+                        <h3>Wallet {index + 1}</h3>
+                        <span className="badge">{item.transactionCount || item.degree || 0} tx</span>
+                      </div>
+                      <div className="card-body">
+                        <div className="info-row">
+                          <span className="label">Dirección:</span>
+                          <span className="value">{item.address || item.wallet}</span>
+                        </div>
+                        {item.transactionCount && (
+                          <div className="info-row">
+                            <span className="label">Transacciones:</span>
+                            <span className="value">{item.transactionCount}</span>
+                          </div>
+                        )}
+                        {item.degree && (
+                          <div className="info-row">
+                            <span className="label">Grado:</span>
+                            <span className="value">{item.degree}</span>
+                          </div>
+                        )}
+                        {item.totalAmount && (
+                          <div className="info-row">
+                            <span className="label">Monto Total:</span>
+                            <span className="value">{(item.totalAmount / 100000000).toFixed(8)} BTC</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
+            </>
           ) : (
             <div className="no-results-message">
               <p>No se encontraron resultados para el análisis.</p>

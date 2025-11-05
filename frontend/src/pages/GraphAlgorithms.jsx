@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import NetworkGraph from '../components/NetworkGraph';
+import { ActivityLineChart, StatsCards } from '../components/ChartVisualizations';
 import './GraphAlgorithms.css';
 
 const GraphAlgorithms = () => {
@@ -90,8 +92,66 @@ const GraphAlgorithms = () => {
 
       {results && (
         <div className="results-section">
-          <h2>Resultados</h2>
-          <pre>{JSON.stringify(results, null, 2)}</pre>
+          <h2>Resultados del Algoritmo: {algorithm.toUpperCase()}</h2>
+
+          {/* Información general */}
+          {results.distance !== undefined && (
+            <div className="algorithm-info">
+              <div className="info-card">
+                <span className="info-label">Distancia:</span>
+                <span className="info-value">{results.distance}</span>
+              </div>
+              {results.cost !== undefined && (
+                <div className="info-card">
+                  <span className="info-label">Costo:</span>
+                  <span className="info-value">{results.cost.toFixed(2)}</span>
+                </div>
+              )}
+              {results.pathLength && (
+                <div className="info-card">
+                  <span className="info-label">Longitud del Camino:</span>
+                  <span className="info-value">{results.pathLength}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Visualización del grafo */}
+          <NetworkGraph
+            data={results}
+            width={window.innerWidth - 100}
+            height={600}
+          />
+
+          {/* Camino encontrado */}
+          {results.path && results.path.length > 0 && (
+            <div className="path-section">
+              <h3>🛤️ Camino Encontrado</h3>
+              <div className="path-visualization">
+                {results.path.map((node, idx) => (
+                  <React.Fragment key={idx}>
+                    <div className="path-node">
+                      <div className="node-number">{idx + 1}</div>
+                      <div className="node-address">
+                        {(node.address || node).substring(0, 10)}...
+                      </div>
+                    </div>
+                    {idx < results.path.length - 1 && (
+                      <div className="path-arrow">→</div>
+                    )}
+                  </React.Fragment>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Datos sin procesar en formato mejorado */}
+          <div className="raw-data-section">
+            <details>
+              <summary>Ver datos completos (JSON)</summary>
+              <pre className="json-display">{JSON.stringify(results, null, 2)}</pre>
+            </details>
+          </div>
         </div>
       )}
     </div>
